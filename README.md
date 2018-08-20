@@ -37,7 +37,7 @@ and
 $ sbt 'runMain MyNotebook'
 ```
 
-See [Example1.scala](example/src/main/sala/Example1.scala) and [its output](example/output/Example1.ipynb)
+See [Example1.scala](example/src/main/scala/Example1.scala) and [its output](example/output/Example1.ipynb)
 
 To specify history location, use `--out` option.
 
