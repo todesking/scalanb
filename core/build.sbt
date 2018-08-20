@@ -1,3 +1,5 @@
+name := "scalanb-core"
+
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 
 libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value

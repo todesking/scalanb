@@ -4,6 +4,7 @@ val Scala2_11 = "2.11.12"
 val Scala2_12 = "2.12.6"
 
 val versionSetting = Seq(
+  organization := "com.todesking",
   version := "0.0.1-SNAPSHOT"
 )
 
