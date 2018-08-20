@@ -58,7 +58,9 @@ object Runner {
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
     opts.foreach {
       case `outOptionPattern`(outType, outArgs) =>
-        val parsedOutArgs = outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
+        val parsedOutArgs =
+          if (outArgs == null) Map.empty[String, String]
+          else outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
         outs = outs :+ newOut(outType, parsedOutArgs)
     }
     val theOut = outs match {
