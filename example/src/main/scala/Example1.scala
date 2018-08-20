@@ -2,21 +2,22 @@ import com.todesking.{ scalanb => nb }
 
 @nb.Notebook
 class Example1 {
+  nb.markdown("# Scalanb Example")
+
+  val a = 1
+  val b = 2
+  a
+
+  println(s"a = $a")
   println("hello")
 
-  val abc = 1
-  println(s"abc = $abc")
-  abc
+  nb.markdown("This is $a + b$:")
+  a + b
 
   System.out.println("Hello from System.out.println")
   println("Hello from Console.println")
   System.err.println("Boo!")
   Console.err.println("Boo!2")
-  val b = abc + 1
-  val c = abc * b
-  c
-  b
-  println(1)
 
   def f(xxx: Int) = {
     xxx * xxx

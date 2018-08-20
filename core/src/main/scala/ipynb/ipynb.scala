@@ -21,7 +21,7 @@ object JsonMapping {
   }
   implicit lazy val wCell: Writes[Cell] = Writes[Cell] {
     case c @ Cell.Markdown(source) =>
-      jso('cell_type -> c.cellType, 'source -> source)
+      jso('cell_type -> c.cellType, 'metadata -> JsObject(Seq()), 'source -> source)
     case c @ Cell.Code(executionCount, source, Cell.CodeMetadata(collapsed, scroll), outputs) =>
       jso(
         'cell_type -> c.cellType,

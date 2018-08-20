@@ -29,7 +29,7 @@ object Notebook {
     def makeRunMethod(c: Context)(stats: Seq[c.universe.Tree]): c.universe.Tree = {
       import c.universe._
       q"""
-          def scalanb__run(scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
+          def scalanb__run(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
               ..$stats
           }"""
     }

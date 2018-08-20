@@ -41,7 +41,7 @@ object Runner {
   }
 
   type TargetType = {
-    def scalanb__run(builder: Builder): Unit
+    def scalanb__run(implicit builder: Builder): Unit
   }
 
   case class Args(out: Out)

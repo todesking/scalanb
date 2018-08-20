@@ -10,6 +10,10 @@ trait Builder {
 
   def code(src: String): Unit
 
+  def markdown(src: String): Unit
+
+  def quiet(): Unit
+
   def expr(value: Unit): Unit = {}
   def expr(value: Nothing): Unit = {}
 
@@ -60,6 +64,15 @@ object Builder {
       this.cells = this.cells :+ c
     }
 
+    override def quiet() = {
+      this.currentExecLog = None
+    }
+
+    override def markdown(src: String): Unit = {
+      flush(None)
+      addCell(Cell.Markdown(src))
+    }
+
     override def code(s: String) = {
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis() - el.startAt
@@ -90,17 +103,18 @@ object Builder {
     }
 
     private[this] def flushCell(els: Seq[ExecLog], res: Option[Output]): Unit = {
+      def nl(s: String) = if (s.nonEmpty && s.last != '\n') s + "\n" else s
       var outputs = Seq.empty[Output]
       els.foreach { el =>
         if (el.stdout.nonEmpty) {
           outputs = outputs :+ Output.Stream(
             "stdout",
-            el.stdout.mkString("") + "\n")
+            nl(el.stdout.mkString("")))
         }
         if (el.stderr.nonEmpty) {
           outputs = outputs :+ Output.Stream(
             "stderr",
-            el.stderr.mkString("") + "\n")
+            nl(el.stderr.mkString("")))
         }
       }
       res.foreach { r =>
