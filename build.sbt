@@ -16,6 +16,10 @@ lazy val test = project
   .dependsOn(core)
   .settings(versionSetting)
   .settings(coreCross)
+lazy val example = project
+  .dependsOn(core)
+  .settings(versionSetting)
+  .settings(coreCross)
 
 val sparkCross = Seq(
   scalaVersion := Scala2_11,

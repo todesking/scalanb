@@ -1,7 +1,7 @@
 import com.todesking.{ scalanb => nb }
 
 @nb.Notebook
-class NBTest {
+class Example1 {
   println("hello")
 
   val abc = 1
