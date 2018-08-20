@@ -25,10 +25,9 @@ class Example1 {
 
   f(10); f(20)
 
-  val xxx = 100
-  val yyy = 200
-  Thread.sleep(6000)
-  val zzz = 300
+  val x = 6
+  val y = 1000
+  Thread.sleep(x * y)
 
   ???
 }

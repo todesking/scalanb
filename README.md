@@ -14,25 +14,20 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 scalacOptions += "-Yrangepos"
 ```
 
-## Example: Batch Notebook
+## Batch Notebook
+
+1. Setup dependencies, compiler plugin, scalac options in `build.sbt`
+2. Create notebook class with `@Notebook` annotation
+3. Run notebook (`main` method is automatically generated)
+4. `.ipynb` is saved in `~/.scalanb/hist`(default)
 
 ```scala
-import com.todesking.scalanb
+import com.todesking.{scalanb => nb}
 
-@scalanb.Notebook
+@nb.Notebook
 class MyNotebook {
-  nb.markdown("""
-# Example of scalanb
-  """)
-
-  val data = Seq(1, 2, 3, 4, 5)
-  println("data prepared.")
-  data // End block and print result implicitly
-
-  data.map(_ * 2) // End block and print result implicitly
-
-  println("Hello!")
-  println(s"Sum of data = ${data.sum}")
+  nb.markdown("# Example of scalanb")
+  // add more code here
 }
 ```
 
@@ -42,10 +37,7 @@ and
 $ sbt 'runMain MyNotebook'
 ```
 
-Result: (screenshot here)
-
-In default, notebooks (`.ipynb`) are saved to `~/.scalanb/hist/`
-
+See [Example1.scala](example/src/main/sala/Example1.scala) and [its output](example/output/Example1.ipynb)
 
 To specify history location, use `--out` option.
 
@@ -53,37 +45,20 @@ To specify history location, use `--out` option.
 $ sbt 'runMain MyNotebook --out=file:path=./hist/'
 ```
 
-## Example: REPL Notebook
+## Spark Batch Notebook
 
-```shellsession
-$ sbt 'runMain com.todesking.scalanb.REPL'
-
-scala> // ...
-scala> :q
-
-$ ls ~/.scalanb/hist/
-20180811.031230.repl.ipynb
-20180811.031230.repl.scala
-```
-
-## Example: Save history to HDFS
-
-```shellsession
-$ sbt 'runMain MyNotebook --out=hdfs:path=/tmp/hist/'
-```
-
-## Example: Spark Batch Notebook
+Use `spark.Notebook` annotation
 
 ```scala
-import com.todesking.scalanb
+import com.todesking.{scalanb => nb}
 
-@scalanb.spark.Notebook
+@nb.spark.Notebook
 class MyNotebook {
-  // spark session available
+  // spark session available here
   val df = spark.read.csv("...")
 
-  // Show dataframe as HTML tables via `shownb` method
-  df.shownb(10)
+  // Show dataframe as HTML tables via `nb.show` method
+  df.nb.show(10)
 }
 ```
 
@@ -92,9 +67,9 @@ $ sbt assembly # Make fatjar
 $ spark-submit --class MyNotebook myapp.jar
 ```
 
-## Example: Spark REPL Notebook
+## Example: Save history to HDFS
 
 ```shellsession
-$ sbt assembly # Make fatjar
-$ spark-submit --class com.todesking.scalanb.spark.REPL --deploy-mode client myapp.jar
+$ sbt 'runMain MyNotebook --out=hdfs:path=/tmp/hist/'
 ```
+
