@@ -1,3 +1,5 @@
+resolvers += Resolver.sonatypeRepo("releases")
+
 val Scala2_11 = "2.11.12"
 val Scala2_12 = "2.12.6"
 
