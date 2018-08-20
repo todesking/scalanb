@@ -27,7 +27,7 @@ class HdfsOut(val fs: FileSystem, val path: Path) extends Out {
     val src = ipynb.JsonMapping.toJson(ast, pretty = true)
     prepare()
     val filePath = new Path(path, s"$name.ipynb")
-    val w = new java.io.PrintWriter(fs.create(path))
+    val w = new java.io.PrintWriter(fs.create(filePath))
     try {
       w.print(src)
     } finally {
