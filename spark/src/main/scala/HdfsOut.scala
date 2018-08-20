@@ -11,7 +11,7 @@ class HdfsOutFactory extends OutFactory {
     val conf = new Configuration
     FileSystem.get(conf)
   }
-  lazy val defaultPath = new Path(fs.getHomeDirectory, ".ipynb/hist")
+  lazy val defaultPath = new Path(fs.getHomeDirectory, ".scalanb/hist")
   override def name = "hdfs"
   override def newOut(args: Map[String, String]) = {
     val path = args.get("path").map(new Path(_)) getOrElse defaultPath
