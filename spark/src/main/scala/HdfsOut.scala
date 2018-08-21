@@ -35,4 +35,17 @@ class HdfsOut(val fs: FileSystem, val path: Path) extends Out {
     }
     filePath.toString
   }
+  override def openLog(name: String) = {
+    val stream = fs.create(new Path(path, s"$name.log"))
+    val w = new java.io.OutputStreamWriter(stream)
+    new java.io.Writer {
+      override def write(cbuf: Array[Char], off: Int, len: Int) =
+        w.write(cbuf, off, len)
+      override def close() = w.close()
+      override def flush() = {
+        w.flush()
+        stream.hflush()
+      }
+    }
+  }
 }

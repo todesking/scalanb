@@ -67,9 +67,35 @@ $ sbt assembly # Make fatjar
 $ spark-submit --class MyNotebook myapp.jar
 ```
 
-## Example: Save history to HDFS
+## Save history to HDFS
+
+Requirement: `scalanb-spark`
 
 ```shellsession
 $ sbt 'runMain MyNotebook --out=hdfs:path=/tmp/hist/'
 ```
 
+### Execution log
+
+When `--log` option enabled, realtime log available.
+
+```shellsession
+$ sbt 'runMain MyNotebook --log'
+```
+
+```
+# .scalanb/hist/{TIME}_{NOTE_NAME}.log
+[2018-08-21 21:46:48] > nb.setShowTimeMillis(100)
+
+[2018-08-21 21:46:48] > nb.markdown("# Scalanb Example")
+
+[2018-08-21 21:46:48] > val a = 1
+
+[2018-08-21 21:46:48] > val b = 2
+
+[2018-08-21 21:46:48] > a
+[2018-08-21 21:46:48] => 1
+
+[2018-08-21 21:46:48] > println(s"a = $a")
+[2018-08-21 21:46:48] stdout: a = 1
+```

@@ -6,10 +6,6 @@ import com.todesking.scalanb.ipynb.Output
 trait Builder {
   def setShowTimeMillis(l: Long): Unit
 
-  protected def executionCount: Int
-
-  protected def flush(res: Option[Output]): Unit
-
   def code(src: String): Unit
 
   def markdown(src: String): Unit
@@ -17,23 +13,17 @@ trait Builder {
   def quiet(): Unit
 
   def expr(value: Unit): Unit = {}
-  def expr(value: Nothing): Unit = {}
-
-  def expr(value: Value): Unit =
-    flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)))
+  def expr(value: Nothing): Unit = throw new AssertionError
 
   def expr[A: Format](value: A): Unit =
     expr(implicitly[Format[A]].apply(value))
 
-  def markdownCell(src: String): Unit
+  def expr(value: Value): Unit
 
-  def error(t: Throwable)(implicit format: ErrorFormat): Unit =
-    flush(Some(format.apply(t)))
+  def error(t: Throwable)(implicit format: ErrorFormat): Unit
 
   def stdout(s: String): Unit
   def stderr(s: String): Unit
-
-  def build(): ipynb.Notebook
 }
 
 object Builder {
@@ -49,9 +39,9 @@ object Builder {
     def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq(), Seq())
   }
 
-  class OnMemory extends Builder {
+  class Ipynb extends Builder {
     private[this] var _executionCount = 1
-    override def executionCount = _executionCount
+    def executionCount = _executionCount
 
     private[this] var cells = Seq.empty[Cell]
 
@@ -67,6 +57,12 @@ object Builder {
     private[this] def addCell(c: Cell) = {
       this.cells = this.cells :+ c
     }
+
+    override def expr(value: Value) =
+      flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)))
+
+    override def error(t: Throwable)(implicit format: ErrorFormat) =
+      flush(Some(format.apply(t)))
 
     override def quiet() = {
       this.currentExecLog = None
@@ -102,11 +98,6 @@ object Builder {
       this.currentExecLog = currentExecLog.map(_.addStderr(s))
     }
 
-    override def markdownCell(s: String) = {
-      flush(None)
-      addCell(Cell.Markdown(s))
-    }
-
     private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
       def nl(s: String) = if (s.nonEmpty && s.last != '\n') s + "\n" else s
       var outputs = Seq.empty[Output]
@@ -139,7 +130,7 @@ object Builder {
     private[this] def makeExecutionTime(millis: Long): ipynb.Output =
       ipynb.Output.DisplayData(Value.text(f"Execution time: ${millis / 1000.0}%.2f[Sec]").data, Map())
 
-    override def flush(res: Option[Output]) = {
+    def flush(res: Option[Output]) = {
       flushCell(execLogs, Seq())
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis - el.startAt
@@ -154,7 +145,7 @@ object Builder {
       this.execLogs = Seq()
     }
 
-    override def build() = {
+    def build() = {
       flush(None)
       ipynb.Notebook(
         metadata = Map(),
@@ -162,6 +153,73 @@ object Builder {
         nbformatMinor = 0,
         cells)
     }
+  }
+
+  class Log(writer: java.io.PrintWriter) extends Builder {
+    val sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+
+    private[this] def newLine() = writer.println()
+
+    private[this] def write(lines: Seq[String]): Unit = {
+      val prefix = s"[${sdf.format(new java.util.Date())}] "
+      lines.foreach { l =>
+        writer.println(prefix + l)
+      }
+      writer.flush()
+    }
+
+    private[this] def write(content: String, prefix: String): Unit =
+      write(
+        content.split("\n").map(prefix + _))
+
+    override def setShowTimeMillis(l: Long): Unit = {}
+
+    override def code(src: String): Unit = {
+      newLine()
+      write(src, "> ")
+    }
+
+    override def markdown(src: String): Unit = {}
+
+    override def quiet(): Unit = {}
+
+    override def expr(value: Unit): Unit = {}
+    override def expr(value: Nothing): Unit = {}
+
+    override def expr[A: Format](value: A): Unit =
+      expr(implicitly[Format[A]].apply(value))
+
+    override def expr(value: Value): Unit = {
+      val s = value.text
+      write(s, "=> ")
+    }
+
+    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = {
+      write(t.toString, "ERR: ")
+      write(t.getStackTrace.map("ERR:   " + _.toString))
+    }
+
+    override def stdout(s: String): Unit = write(s, "stdout: ")
+    override def stderr(s: String): Unit = write(s, "stderr: ")
+  }
+
+  class Multiplex(children: Seq[Builder]) extends Builder {
+    override def setShowTimeMillis(l: Long): Unit = children.foreach(_.setShowTimeMillis(l))
+
+    override def code(src: String): Unit = children.foreach(_.code(src))
+
+    override def markdown(src: String): Unit = children.foreach(_.markdown(src))
+
+    override def quiet(): Unit = children.foreach(_.quiet())
+
+    override def expr(value: Unit): Unit = children.foreach(_.expr(value))
+    override def expr[A: Format](value: A): Unit = children.foreach(_.expr(value))
+    override def expr(value: Value): Unit = children.foreach(_.expr(value))
+
+    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = children.foreach(_.error(t))
+
+    override def stdout(s: String): Unit = children.foreach(_.stdout(s))
+    override def stderr(s: String): Unit = children.foreach(_.stderr(s))
   }
 
 }

@@ -3,16 +3,28 @@ package com.todesking.scalanb
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
+import java.io.Writer
 
 trait Out {
   def prepare(): Unit
   def notebook(name: String, ast: ipynb.Notebook): String
+  def openLog(name: String): Writer
 }
 
 class MultiOut(outs: Seq[Out]) extends Out {
   override def prepare() = outs.foreach(_.prepare())
   override def notebook(name: String, ast: ipynb.Notebook) =
     outs.map(_.notebook(name, ast)).mkString(", ")
+  override def openLog(name: String) = {
+    // TODO: better error handling
+    val children = outs.map(_.openLog(name))
+    new Writer {
+      override def write(cbuf: Array[Char], off: Int, len: Int) =
+        children.foreach(_.write(cbuf, off, len))
+      override def close() = children.foreach(_.close())
+      override def flush() = children.foreach(_.flush())
+    }
+  }
 }
 
 trait OutFactory {
@@ -44,4 +56,7 @@ class FileOut(val path: Path) extends Out {
     val _ = Files.write(filePath, Seq(src).asJava)
     filePath.toString
   }
+
+  override def openLog(name: String) =
+    Files.newBufferedWriter(path.resolve(s"$name.log"))
 }

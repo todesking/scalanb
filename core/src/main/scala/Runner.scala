@@ -44,7 +44,7 @@ object Runner {
     def scalanb__run(implicit builder: Builder): Unit
   }
 
-  case class Args(out: Out)
+  case class Args(out: Out, useLog: Boolean)
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
@@ -54,6 +54,7 @@ object Runner {
     val opts = args.takeWhile(_ != "--")
 
     var outs = Seq.empty[Out]
+    var useLog = false
     val id = "[a-zA-Z0-9_.]+"
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
     opts.foreach {
@@ -62,13 +63,15 @@ object Runner {
           if (outArgs == null) Map.empty[String, String]
           else outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
         outs = outs :+ newOut(outType, parsedOutArgs)
+      case "--log" =>
+        useLog = true
     }
     val theOut = outs match {
       case Seq() => newOut("file", Map())
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }
-    (Args(theOut), rest)
+    (Args(theOut, useLog), rest)
   }
 
   def runBatch(args: Array[String], target: TargetType, notebookName: String): Unit = {
@@ -79,7 +82,14 @@ object Runner {
     val logName = newLogName(notebookName)
     val out = parsedArgs.out
 
-    val builder = new Builder.OnMemory()
+    val logWriter =
+      if (parsedArgs.useLog) Some(new java.io.PrintWriter(out.openLog(logName)))
+      else None
+
+    val ipynbBuilder = new Builder.Ipynb()
+    val builder = logWriter.fold[Builder](ipynbBuilder) { w =>
+      new Builder.Multiplex(Seq(ipynbBuilder, new Builder.Log(w)))
+    }
 
     try {
       run(builder) { builder =>
@@ -91,8 +101,12 @@ object Runner {
         }
       }
     } finally {
-      val filePath = out.notebook(logName, builder.build())
-      println(s"scalanb: Notebook log saved to ${filePath}")
+      try {
+        val filePath = out.notebook(logName, ipynbBuilder.build())
+        println(s"scalanb: Notebook log saved to ${filePath}")
+      } finally {
+        logWriter.foreach(_.close())
+      }
     }
   }
 }

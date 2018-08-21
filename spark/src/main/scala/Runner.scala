@@ -22,7 +22,14 @@ object Runner {
 
     val out = parsedArgs.out
 
-    val builder = new Builder.OnMemory()
+    val logWriter =
+      if (parsedArgs.useLog) Some(new java.io.PrintWriter(out.openLog(logName)))
+      else None
+
+    val ipynbBuilder = new Builder.Ipynb()
+    val builder = logWriter.fold[Builder](ipynbBuilder) { w =>
+      new Builder.Multiplex(Seq(ipynbBuilder, new Builder.Log(w)))
+    }
 
     try {
       scalanb.Runner.run(builder) { builder =>
@@ -34,8 +41,12 @@ object Runner {
         }
       }
     } finally {
-      val filePath = out.notebook(logName, builder.build())
-      println(s"scalanb: Notebook log saved to ${filePath}")
+      try {
+        val filePath = out.notebook(logName, ipynbBuilder.build())
+        println(s"scalanb: Notebook log saved to ${filePath}")
+      } finally {
+        logWriter.foreach(_.close())
+      }
     }
   }
 }

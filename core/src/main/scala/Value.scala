@@ -7,6 +7,12 @@ import play.api.libs.json.JsString
 case class Value(data: Map[String, JsValue]) {
   def ++(rhs: Value): Value =
     Value(data ++ rhs.data)
+
+  def text: String = data.get("text/plain") match {
+    case Some(JsString(s)) => s
+    case Some(x) => x.toString
+    case None => "???"
+  }
 }
 
 object Value {
