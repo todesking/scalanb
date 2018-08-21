@@ -38,15 +38,13 @@ object Builder {
   case class ExecLog(
     code: String,
     startAt: Long,
-    duration: Long,
     stdout: Seq[String],
     stderr: Seq[String]) {
     def addStdout(s: String) = copy(stdout = this.stdout :+ s)
     def addStderr(s: String) = copy(stderr = this.stderr :+ s)
-    def setDuration(t: Long) = copy(duration = t)
   }
   object ExecLog {
-    def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, startAt, Seq(), Seq())
+    def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq(), Seq())
   }
 
   class OnMemory extends Builder {
@@ -77,13 +75,14 @@ object Builder {
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis() - el.startAt
         if (duration > showTimeMillis) {
+          // First, flush previous exec logs
           this.currentExecLog = None
           flush(None)
+          // Then flush current one
           this.currentExecLog = Some(el)
-          val out = ipynb.Output.DisplayData(Value.text(f"Execution time: ${duration / 1000.0}%.2f").data, Map())
-          flush(Some(out))
+          flush(None)
         } else {
-          this.execLogs = this.execLogs :+ el.setDuration(duration)
+          this.execLogs = this.execLogs :+ el
         }
       }
       this.currentExecLog = Some(ExecLog(s, System.currentTimeMillis()))
@@ -102,7 +101,7 @@ object Builder {
       addCell(Cell.Markdown(s))
     }
 
-    private[this] def flushCell(els: Seq[ExecLog], res: Option[Output]): Unit = {
+    private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
       def nl(s: String) = if (s.nonEmpty && s.last != '\n') s + "\n" else s
       var outputs = Seq.empty[Output]
       els.foreach { el =>
@@ -131,9 +130,20 @@ object Builder {
       }
     }
 
+    private[this] def makeExecutionTime(millis: Long): ipynb.Output =
+      ipynb.Output.DisplayData(Value.text(f"Execution time: ${millis / 1000.0}%.2f").data, Map())
+
     override def flush(res: Option[Output]) = {
-      flushCell(execLogs, None)
-      flushCell(currentExecLog.toSeq, res)
+      flushCell(execLogs, Seq())
+      currentExecLog.foreach { el =>
+        val duration = System.currentTimeMillis - el.startAt
+        val outs =
+          if (duration > showTimeMillis)
+            Seq(makeExecutionTime(duration)) ++ res
+          else
+            res.toSeq
+        flushCell(Seq(el), outs)
+      }
       this.currentExecLog = None
       this.execLogs = Seq()
     }
