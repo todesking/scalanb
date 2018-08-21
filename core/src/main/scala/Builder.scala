@@ -137,7 +137,7 @@ object Builder {
     }
 
     private[this] def makeExecutionTime(millis: Long): ipynb.Output =
-      ipynb.Output.DisplayData(Value.text(f"Execution time: ${millis / 1000.0}%.2f").data, Map())
+      ipynb.Output.DisplayData(Value.text(f"Execution time: ${millis / 1000.0}%.2f[Sec]").data, Map())
 
     override def flush(res: Option[Output]) = {
       flushCell(execLogs, Seq())
