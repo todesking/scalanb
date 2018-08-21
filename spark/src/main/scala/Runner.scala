@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession
 
 object Runner {
   type TargetType = {
-    def scalanb__run(builder: Builder, spark: SparkSession): Unit
+    def scalanb__run(spark: SparkSession)(implicit builder: Builder): Unit
   }
 
   def runBatch(args: Array[String], target: TargetType, notebookName: String): Unit = {
@@ -27,7 +27,7 @@ object Runner {
     try {
       scalanb.Runner.run(builder) { builder =>
         val _ = try {
-          target.scalanb__run(builder, spark)
+          target.scalanb__run(spark)(builder)
         } catch {
           case e: java.lang.reflect.InvocationTargetException =>
             throw e.getCause

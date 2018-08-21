@@ -15,7 +15,7 @@ object Notebook {
     override def makeRunMethod(c: Context)(stats: Seq[c.universe.Tree]): c.universe.Tree = {
       import c.universe._
       q"""
-          def scalanb__run(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder, spark: _root_.org.apache.spark.sql.SparkSession): _root_.scala.Unit = {
+          def scalanb__run(spark: _root_.org.apache.spark.sql.SparkSession)(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
             import _root_.com.todesking.scalanb.spark.Syntax._
             import spark.implicits._
             ..$stats
