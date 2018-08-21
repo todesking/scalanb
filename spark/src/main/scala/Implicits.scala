@@ -3,12 +3,19 @@ package com.todesking.scalanb.spark
 import org.apache.spark.sql.Dataset
 
 import com.todesking.scalanb.Value
+import com.todesking.scalanb.Format
 
-object Syntax {
+object Implicits {
   implicit class DatasetNB[A](val self: Dataset[A]) {
-    def nb: NBOps[A] = new NBOps[A](self)
+    def nb: ImplicitsUtil.NBOps[A] = new ImplicitsUtil.NBOps[A](self)
   }
 
+  implicit def datasetFormat[A]: Format[Dataset[A]] = Format[Dataset[A]] { ds =>
+    ImplicitsUtil.formatDataset(ds)
+  }
+}
+
+object ImplicitsUtil {
   class NBOps[A](self: Dataset[A]) {
     def show(n: Int = 10): Value = {
       val df = self.toDF()
@@ -20,12 +27,10 @@ object Syntax {
           s"$value"
         }
       }.toSeq
-      Util.table(cols.toSeq, rows)
+      ImplicitsUtil.table(cols.toSeq, rows)
     }
   }
-}
 
-object Util {
   private[this] def strWidth(s: String) = s.toCharArray.map {
     case c if c < 256 => 1
     case _ => 2
@@ -71,5 +76,9 @@ object Util {
       </table>""")
 
     renderText() ++ renderHtml()
+  }
+
+  def formatDataset(ds: Dataset[_]): Value = {
+    Value.text(ds.schema.treeString)
   }
 }

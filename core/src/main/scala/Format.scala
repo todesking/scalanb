@@ -16,6 +16,10 @@ trait FormatLowPriorityImplicit {
   }
 }
 object Format extends FormatLowPriorityImplicit {
+  def apply[A](f: A => Value): Format[A] =
+    new Format[A] {
+      override def apply(v: A) = f(v)
+    }
 }
 
 object ErrorFormat {
