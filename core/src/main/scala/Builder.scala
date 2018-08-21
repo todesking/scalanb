@@ -3,6 +3,8 @@ package com.todesking.scalanb
 import com.todesking.scalanb.ipynb.Cell
 import com.todesking.scalanb.ipynb.Output
 
+import play.api.libs.json
+
 trait Builder {
   def setShowTimeMillis(l: Long): Unit
 
@@ -148,7 +150,7 @@ object Builder {
     def build() = {
       flush(None)
       ipynb.Notebook(
-        metadata = Map(),
+        metadata = Map("language_info" -> json.JsObject(Map("name" -> json.JsString("scala")))),
         nbformat = 4,
         nbformatMinor = 0,
         cells)
