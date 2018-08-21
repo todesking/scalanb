@@ -2,6 +2,8 @@ import com.todesking.{ scalanb => nb }
 
 @nb.Notebook
 class Example1 {
+  nb.setShowTimeMillis(100)
+
   nb.markdown("# Scalanb Example")
 
   val a = 1
@@ -25,9 +27,14 @@ class Example1 {
 
   f(10); f(20)
 
-  val x = 6
-  val y = 1000
+  val x = 2
+  val y = 100
   Thread.sleep(x * y)
+
+  locally {
+    Thread.sleep(300)
+    100
+  }
 
   ???
 }

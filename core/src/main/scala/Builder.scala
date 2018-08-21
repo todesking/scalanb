@@ -4,6 +4,8 @@ import com.todesking.scalanb.ipynb.Cell
 import com.todesking.scalanb.ipynb.Output
 
 trait Builder {
+  def setShowTimeMillis(l: Long): Unit
+
   protected def executionCount: Int
 
   protected def flush(res: Option[Output]): Unit
@@ -56,7 +58,11 @@ object Builder {
     private[this] var execLogs = Seq.empty[ExecLog]
     private[this] var currentExecLog: Option[ExecLog] = None
 
-    val showTimeMillis = 5 * 1000
+    var _showTimeMillis: Long = 5 * 1000L
+    def showTimeMillis = _showTimeMillis
+    override def setShowTimeMillis(l: Long) = {
+      _showTimeMillis = l
+    }
 
     private[this] def addCell(c: Cell) = {
       this.cells = this.cells :+ c

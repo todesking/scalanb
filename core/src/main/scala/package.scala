@@ -5,4 +5,6 @@ package object scalanb {
     b.quiet() // Cancel current execution log
     b.markdown(src)
   }
+  def setShowTimeMillis(l: Long)(implicit b: Builder): Unit =
+    b.setShowTimeMillis(l)
 }
