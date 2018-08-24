@@ -26,6 +26,8 @@ trait Builder {
 
   def stdout(s: String): Unit
   def stderr(s: String): Unit
+
+  def finish(): Unit = {}
 }
 
 object Builder {
@@ -155,10 +157,15 @@ object Builder {
         nbformatMinor = 0,
         cells)
     }
+
+    override def finish() = flush(None)
   }
 
   class Log(writer: java.io.PrintWriter) extends Builder {
-    val sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    private[this] val sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+
+    private[this] var startAt: Option[Long] = None
+    private[this] var showTimeMillis = 5000L
 
     private[this] def newLine() = writer.println()
 
@@ -174,10 +181,23 @@ object Builder {
       write(
         content.split("\n").map(prefix + _))
 
-    override def setShowTimeMillis(l: Long): Unit = {}
+    private[this] def flush() = {
+      startAt.map(System.currentTimeMillis() - _)
+        .filter(_ >= showTimeMillis)
+        .foreach { duration =>
+          write(f"Execution time: ${duration / 1000.0}%.2f[Sec]", "")
+        }
+      startAt = None
+    }
+
+    override def setShowTimeMillis(l: Long): Unit = {
+      showTimeMillis = l
+    }
 
     override def code(src: String): Unit = {
+      flush()
       newLine()
+      startAt = Some(System.currentTimeMillis())
       write(src, "> ")
     }
 
@@ -194,15 +214,19 @@ object Builder {
     override def expr(value: Value): Unit = {
       val s = value.text
       write(s, "=> ")
+      flush()
     }
 
     override def error(t: Throwable)(implicit format: ErrorFormat): Unit = {
       write(t.toString, "ERR: ")
       write(t.getStackTrace.map("ERR:   " + _.toString))
+      flush()
     }
 
     override def stdout(s: String): Unit = write(s, "stdout: ")
     override def stderr(s: String): Unit = write(s, "stderr: ")
+
+    override def finish() = flush()
   }
 
   class Multiplex(children: Seq[Builder]) extends Builder {
@@ -222,6 +246,7 @@ object Builder {
 
     override def stdout(s: String): Unit = children.foreach(_.stdout(s))
     override def stderr(s: String): Unit = children.foreach(_.stderr(s))
+    override def finish() = children.foreach(_.finish())
   }
 
 }
