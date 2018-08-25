@@ -22,10 +22,10 @@ class Example1 {
   Console.err.println("Boo!2")
 
   def f(xxx: Int) = {
-    xxx * xxx
+    xxx * xxx * xxx
   }
 
-  f(10); f(20)
+  f(10); f(99)
 
   val x = 2
   val y = 100
