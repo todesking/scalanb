@@ -43,6 +43,14 @@ object Builder {
     def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq(), Seq())
   }
 
+  def makeExecutionTime(millis: Long): Value = {
+    val sec = millis / 1000.0
+    var text = f"$sec%.2f[Sec]"
+    if (sec > 120) text = text + f" = ${sec / 60}%.2f[Min]"
+    if (sec > 7200) text = text + f" = ${sec / 60 / 60}%.2f[Hour]"
+    Value.text(f"Execution time: $text")
+  }
+
   class Ipynb extends Builder {
     private[this] var _executionCount = 1
     def executionCount = _executionCount
@@ -131,16 +139,14 @@ object Builder {
       }
     }
 
-    private[this] def makeExecutionTime(millis: Long): ipynb.Output =
-      ipynb.Output.DisplayData(Value.text(f"Execution time: ${millis / 1000.0}%.2f[Sec]").data, Map())
-
     def flush(res: Option[Output]) = {
       flushCell(execLogs, Seq())
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis - el.startAt
         val outs =
           if (duration > showTimeMillis)
-            Seq(makeExecutionTime(duration)) ++ res
+            Seq(ipynb.Output.DisplayData(
+              makeExecutionTime(duration).data, Map())) ++ res
           else
             res.toSeq
         flushCell(Seq(el), outs)
@@ -185,7 +191,7 @@ object Builder {
       startAt.map(System.currentTimeMillis() - _)
         .filter(_ >= showTimeMillis)
         .foreach { duration =>
-          write(f"Execution time: ${duration / 1000.0}%.2f[Sec]", "")
+          write(makeExecutionTime(duration).text, "")
         }
       startAt = None
     }
