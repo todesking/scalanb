@@ -63,14 +63,19 @@ object ImplicitsUtil {
       .replaceAll("\"", "&quot;")
       .replaceAll("'", "&#39;")
 
+    def wbr(s: String): String = s
+      .replaceAll("=", "=<wbr>")
+      .replaceAll("&", "&<wbr>")
+      .replaceAll("%", "%<wbr>")
+
     def renderHtml(): Value = Value.html(
-      s"""<table>
+      s"""<table style="word-wrap: break-word">
       <thead>${
         colNames.map { s => s"<th>${h(s)}</th>" }.mkString("")
       }</thead>
       <tbody>${
         rows.map { row =>
-          s"<tr>${row.map { s => s"<td>${h(s)}</td>" }.mkString("")}</tr>"
+          s"<tr>\n${row.map { s => s"<td>${wbr(h(s))}</td>" }.mkString("\n")}\n</tr>"
         }.mkString("\n")
       }</tbody>
       </table>""")
