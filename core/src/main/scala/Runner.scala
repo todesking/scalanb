@@ -1,7 +1,7 @@
 package com.todesking.scalanb
 
-import com.todesking.scalanb.util.TappedPrintStream
-import com.todesking.scalanb.util.IO
+import com.todesking.scalanb.io.TappedPrintStream
+import com.todesking.scalanb.io.IO
 
 object Runner {
   def run[A](builder: Builder)(f: Builder => A): A = {

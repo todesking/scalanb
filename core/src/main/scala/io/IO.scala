@@ -1,4 +1,4 @@
-package com.todesking.scalanb.util
+package com.todesking.scalanb.io
 
 import java.io.PrintStream
 
