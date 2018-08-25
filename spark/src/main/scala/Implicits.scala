@@ -58,6 +58,7 @@ object ImplicitsUtil {
     }
 
     def h(s: String): String = s
+      .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll("\"", "&quot;")
@@ -65,7 +66,7 @@ object ImplicitsUtil {
 
     def wbr(s: String): String = s
       .replaceAll("=", "=<wbr>")
-      .replaceAll("&", "&<wbr>")
+      .replaceAll("&amp;", "&amp;<wbr>")
       .replaceAll("%", "%<wbr>")
 
     def renderHtml(): Value = Value.html(
