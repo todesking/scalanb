@@ -36,5 +36,18 @@ class Example1 {
     100
   }
 
+  val colNames =
+    Seq("id", "name", "size")
+
+  val rows =
+    Seq(
+      "1,Int,4",
+      "2,Object,8",
+      "3,Long,8",
+      "4,Short,2").map(_.split(",").toSeq)
+
+  nb.table(colNames, rows)
+  nb.vtable(colNames, rows)
+
   ???
 }

@@ -4,6 +4,7 @@ import org.apache.spark.sql.Dataset
 
 import com.todesking.scalanb.Value
 import com.todesking.scalanb.Format
+import com.todesking.scalanb.format.Table
 
 object Implicits {
   implicit class DatasetNB[A](val self: Dataset[A]) {
@@ -17,9 +18,9 @@ object Implicits {
 
 object ImplicitsUtil {
   class NBOps[A](self: Dataset[A]) {
-    def show(n: Int = 10): Value = {
+    private[this] def build(n: Int): (Seq[String], Seq[Seq[String]]) = {
       val df = self.toDF()
-      val cols = df.columns
+      val cols = df.columns.toSeq
       val rows = df.limit(n).collect().map { row =>
         (0 until cols.size).map { i =>
           val value = row.get(i)
@@ -27,61 +28,16 @@ object ImplicitsUtil {
           s"$value"
         }
       }.toSeq
-      ImplicitsUtil.table(cols.toSeq, rows)
+      (cols, rows)
     }
-  }
-
-  private[this] def strWidth(s: String) = s.toCharArray.map {
-    case c if c < 256 => 1
-    case _ => 2
-  }.sum
-
-  def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
-    require(rows.forall { r => r.size == colNames.size })
-
-    def lpad(str: String, w: Int): String = {
-      val sw = strWidth(str)
-      if (sw < w) " " * (w - sw) + str
-      else str
+    def show(n: Int = 10): Value = {
+      val (cols, rows) = build(n)
+      Table.table(cols, rows)
     }
-
-    def renderText(): Value = {
-      val colSize = colNames.size
-      val widths = (0 until colSize).map { i =>
-        (strWidth(colNames(i)) +: rows.map(r => strWidth(r(i)))).max
-      }
-      val header = colNames.zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
-      val body = rows.map { row =>
-        row.zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
-      }
-      Value.text((header +: body).mkString("\n"))
+    def vshow(n: Int = 10): Value = {
+      val (cols, rows) = build(n)
+      Table.vtable(cols, rows)
     }
-
-    def h(s: String): String = s
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#39;")
-
-    def wbr(s: String): String = s
-      .replaceAll("=", "=<wbr>")
-      .replaceAll("&amp;", "&amp;<wbr>")
-      .replaceAll("%", "%<wbr>")
-
-    def renderHtml(): Value = Value.html(
-      s"""<table style="word-wrap: break-word">
-      <thead>${
-        colNames.map { s => s"<th>${h(s)}</th>" }.mkString("")
-      }</thead>
-      <tbody>${
-        rows.map { row =>
-          s"<tr>\n${row.map { s => s"<td>${wbr(h(s))}</td>" }.mkString("\n")}\n</tr>"
-        }.mkString("\n")
-      }</tbody>
-      </table>""")
-
-    renderText() ++ renderHtml()
   }
 
   def formatDataset(ds: Dataset[_]): Value = {
