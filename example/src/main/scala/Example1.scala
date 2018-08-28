@@ -17,9 +17,12 @@ class Example1 {
   a + b
 
   System.out.println("Hello from System.out.println")
-  println("Hello from Console.println")
   System.err.println("Boo!")
+  println("Hello from Console.println")
   Console.err.println("Boo!2")
+  (0 until 2).foreach { i =>
+    nb.display(i)
+  }
 
   def f(xxx: Int) = {
     xxx * xxx * xxx

@@ -26,21 +26,26 @@ trait Builder {
 
   def stdout(s: String): Unit
   def stderr(s: String): Unit
+  def display(v: Value): Unit
 
   def finish(): Unit = {}
 }
 
 object Builder {
+  sealed abstract class Content
+  object Content {
+    case class StdOut(value: String) extends Content
+    case class StdErr(value: String) extends Content
+    case class Display(value: Value) extends Content
+  }
   case class ExecLog(
     code: String,
     startAt: Long,
-    stdout: Seq[String],
-    stderr: Seq[String]) {
-    def addStdout(s: String) = copy(stdout = this.stdout :+ s)
-    def addStderr(s: String) = copy(stderr = this.stderr :+ s)
+    contents: Seq[Content]) {
+    def content(c: Content) = copy(contents = contents :+ c)
   }
   object ExecLog {
-    def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq(), Seq())
+    def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq())
   }
 
   def makeExecutionTime(millis: Long): Value = {
@@ -103,26 +108,28 @@ object Builder {
     }
 
     override def stdout(s: String) = {
-      this.currentExecLog = currentExecLog.map(_.addStdout(s))
+      this.currentExecLog = currentExecLog.map(_.content(Content.StdOut(s)))
     }
 
     override def stderr(s: String) = {
-      this.currentExecLog = currentExecLog.map(_.addStderr(s))
+      this.currentExecLog = currentExecLog.map(_.content(Content.StdErr(s)))
+    }
+
+    override def display(v: Value) = {
+      this.currentExecLog = currentExecLog.map(_.content(Content.Display(v)))
     }
 
     private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
       def nl(s: String) = if (s.nonEmpty && s.last != '\n') s + "\n" else s
       var outputs = Seq.empty[Output]
       els.foreach { el =>
-        if (el.stdout.nonEmpty) {
-          outputs = outputs :+ Output.Stream(
-            "stdout",
-            nl(el.stdout.mkString("")))
-        }
-        if (el.stderr.nonEmpty) {
-          outputs = outputs :+ Output.Stream(
-            "stderr",
-            nl(el.stderr.mkString("")))
+        outputs = outputs ++ el.contents.map {
+          case Content.StdOut(s) =>
+            Output.Stream("stdout", nl(s))
+          case Content.StdErr(s) =>
+            Output.Stream("stderr", nl(s))
+          case Content.Display(v) =>
+            Output.DisplayData(v.data, Map())
         }
       }
       res.foreach { r =>
@@ -231,28 +238,34 @@ object Builder {
 
     override def stdout(s: String): Unit = write(s, "stdout: ")
     override def stderr(s: String): Unit = write(s, "stderr: ")
+    override def display(v: Value): Unit = write(v.text, "display: ")
 
     override def finish() = flush()
   }
 
   class Multiplex(children: Seq[Builder]) extends Builder {
-    override def setShowTimeMillis(l: Long): Unit = children.foreach(_.setShowTimeMillis(l))
+    private[this] def exec(f: Builder => Unit) =
+      children.foreach(f)
 
-    override def code(src: String): Unit = children.foreach(_.code(src))
+    override def setShowTimeMillis(l: Long): Unit = exec(_.setShowTimeMillis(l))
 
-    override def markdown(src: String): Unit = children.foreach(_.markdown(src))
+    override def code(src: String): Unit = exec(_.code(src))
 
-    override def quiet(): Unit = children.foreach(_.quiet())
+    override def markdown(src: String): Unit = exec(_.markdown(src))
 
-    override def expr(value: Unit): Unit = children.foreach(_.expr(value))
-    override def expr[A: Format](value: A): Unit = children.foreach(_.expr(value))
-    override def expr(value: Value): Unit = children.foreach(_.expr(value))
+    override def quiet(): Unit = exec(_.quiet())
 
-    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = children.foreach(_.error(t))
+    override def expr(value: Unit): Unit = exec(_.expr(value))
+    override def expr[A: Format](value: A): Unit = exec(_.expr(value))
+    override def expr(value: Value): Unit = exec(_.expr(value))
 
-    override def stdout(s: String): Unit = children.foreach(_.stdout(s))
-    override def stderr(s: String): Unit = children.foreach(_.stderr(s))
-    override def finish() = children.foreach(_.finish())
+    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = exec(_.error(t))
+
+    override def stdout(s: String): Unit = exec(_.stdout(s))
+    override def stderr(s: String): Unit = exec(_.stderr(s))
+    override def display(v: Value): Unit = exec(_.display(v))
+
+    override def finish() = exec(_.finish())
   }
 
 }

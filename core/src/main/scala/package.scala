@@ -13,4 +13,7 @@ package object scalanb {
     Table.table(colNames, rows)
   def vtable(colNames: Seq[String], rows: Seq[Seq[String]]): Value =
     Table.vtable(colNames, rows)
+
+  def display[A](value: A)(implicit b: Builder, format: Format[A]): Unit =
+    b.display(format(value))
 }
