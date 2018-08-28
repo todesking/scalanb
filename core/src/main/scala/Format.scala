@@ -34,6 +34,7 @@ object Format {
     if (math.abs(i) >= 10000.0) Value.text(f"$i%,.2f ($i)")
     else Value.text(f"$i")
   }
+  implicit val defaultValue: Format[Value] = apply(identity)
 }
 
 object ErrorFormat {
