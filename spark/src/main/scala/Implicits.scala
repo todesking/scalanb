@@ -1,6 +1,7 @@
 package com.todesking.scalanb.spark
 
 import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.types
 
 import com.todesking.scalanb.Value
 import com.todesking.scalanb.Format
@@ -24,8 +25,14 @@ object ImplicitsUtil {
       val rows = df.limit(n).collect().map { row =>
         (0 until cols.size).map { i =>
           val value = row.get(i)
-          // TODO: format value
-          s"$value"
+          df.schema(i).dataType match {
+            case types.DoubleType if value != null =>
+              val d = value.asInstanceOf[Double]
+              if (d == 0.0 || d > 0.001) f"$d%.2f"
+              else s"$d"
+            case _ =>
+              s"$value"
+          }
         }
       }.toSeq
       (cols, rows)

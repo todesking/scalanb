@@ -5,8 +5,8 @@ class SparkNB {
   nb.markdown("# Spark test")
   import spark.implicits._
 
-  val df = spark.createDataset(Seq(1, 2, 3, 4, 5)).toDF("v")
+  val df = spark.createDataset(Seq(0.0, 0.00001, 0.002, 0.03, 100)).toDF("v")
   df
   df.count
-  df.select('v, ('v + 1).as("vv")).nb.show()
+  df.select('v, ('v + 1).as("vv")).nb.show(100)
 }
