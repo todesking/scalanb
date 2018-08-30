@@ -20,6 +20,8 @@ object Inspect {
   }
 
   private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] =
+    // Dirty hack to support `val (a, b) = expr` style statements
+    // That statements are desugared to `val x$1 = expr match ...; val a = x._1; val b = x._2`
     stats.foldLeft((0, Seq.empty[c.Tree])) {
       case ((pos, trees), t) =>
         val (start, end) = range(c)(t)
