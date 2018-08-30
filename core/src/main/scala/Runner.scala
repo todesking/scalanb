@@ -81,9 +81,19 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError), rest)
   }
 
-  def runBatch(args: Array[String], target: TargetType, notebookName: String): Unit = {
+  def runBatch(args: Array[String], notebookName: String, target: TargetType): Unit = {
     import scala.language.reflectiveCalls
+    runBatch(args, notebookName) { builder =>
+      try {
+        target.scalanb__run(builder)
+      } catch {
+        case e: java.lang.reflect.InvocationTargetException =>
+          throw e.getCause
+      }
+    }
+  }
 
+  def runBatch(args: Array[String], notebookName: String)(invoke: Builder => Unit): Unit = {
     val (parsedArgs, _) = parseArgs(args)
 
     val logName = newLogName(notebookName)
@@ -104,14 +114,7 @@ object Runner {
     }
 
     try {
-      run(builder) { builder =>
-        val _ = try {
-          target.scalanb__run(builder)
-        } catch {
-          case e: java.lang.reflect.InvocationTargetException =>
-            throw e.getCause
-        }
-      }
+      run(builder)(invoke)
     } catch {
       case e: Throwable =>
         if (parsedArgs.ipynbOnError) writeIpynb()

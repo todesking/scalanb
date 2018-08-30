@@ -39,7 +39,7 @@ object Notebook {
       q"""
       def main(args: Array[String]): Unit = {
         val target = new ${tpname}()
-        _root_.com.todesking.scalanb.Runner.runBatch(args, target, $notebookName)
+        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, target)
       }
       """
     }
