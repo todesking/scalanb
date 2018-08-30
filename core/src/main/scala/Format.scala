@@ -15,24 +15,27 @@ object Format {
     new Format[A] {
       override def apply(v: A) = f(v)
     }
+
+  private[this] def numSummary(d: Double) =
+    Seq(1e15 -> "P", 1e12 -> "T", 1e9 -> "G", 1e6 -> "M", 1e3 -> "K")
+      .find(_._1 <= d)
+      .map { case (n, u) => f"(${d / n}%,.2f$u)" }
+      .getOrElse("")
+
   implicit def defaultAny[A]: Format[A] = new Format[Any] {
     override def apply(value: Any) = Value.text(s"$value")
   }
   implicit val defaultInt: Format[Int] = apply { i =>
-    if (math.abs(i) >= 10000) Value.text(f"$i%,d ($i)")
-    else Value.text(f"$i%d")
+    Value.text(f"$i%d${numSummary(i)}")
   }
   implicit val defaultLong: Format[Long] = apply { i =>
-    if (math.abs(i) >= 10000) Value.text(f"$i%,d ($i)")
-    else Value.text(f"$i%d")
+    Value.text(f"$i%d${numSummary(i)}")
   }
   implicit val defaultFloat: Format[Float] = apply { i =>
-    if (math.abs(i) >= 10000.0) Value.text(f"$i%,.2f ($i)")
-    else Value.text(f"$i")
+    Value.text(f"$i${numSummary(i)}")
   }
   implicit val defaultDouble: Format[Double] = apply { i =>
-    if (math.abs(i) >= 10000.0) Value.text(f"$i%,.2f ($i)")
-    else Value.text(f"$i")
+    Value.text(f"$i${numSummary(i)}")
   }
   implicit val defaultValue: Format[Value] = apply(identity)
 }
