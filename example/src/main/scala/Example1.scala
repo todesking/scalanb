@@ -52,5 +52,5 @@ class Example1 {
   nb.table(colNames, rows)
   nb.vtable(colNames, rows)
 
-  ???
+  throw new RuntimeException("Nested exception", new RuntimeException("Inner exception"))
 }

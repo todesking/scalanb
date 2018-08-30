@@ -40,13 +40,15 @@ object Format {
 object ErrorFormat {
   implicit val default: ErrorFormat = new ErrorFormat {
     override def apply(t: Throwable) = {
-      val stackTraceMessage = t.getStackTrace.map { st =>
-        s"  ${st.toString}"
+      def gather(t: Throwable, prefix: String): Seq[String] = {
+        val trace = (prefix + t.toString) +: t.getStackTrace.map { st => s"  ${st.toString}" }
+        if (t.getCause == null) trace
+        else trace ++ gather(t.getCause, "Caused by: ")
       }
       Output.Error(
         "Exception",
         "(Does Jupyter really use this field??)",
-        Seq(t.toString) ++ stackTraceMessage)
+        gather(t, ""))
     }
   }
 }
