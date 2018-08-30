@@ -94,6 +94,8 @@ object Runner {
   }
 
   def runBatch(args: Array[String], notebookName: String)(invoke: Builder => Unit): Unit = {
+    val start = System.currentTimeMillis()
+
     val (parsedArgs, _) = parseArgs(args)
 
     val logName = newLogName(notebookName)
@@ -109,6 +111,8 @@ object Runner {
     }
 
     def writeIpynb() = {
+      val duration = System.currentTimeMillis() - start
+      builder.markdown(s"Total execution time: ${format.Time.fromMillis(duration)}")
       val filePath = out.notebook(logName, ipynbBuilder.build())
       println(s"scalanb: Notebook log saved to ${filePath}")
     }
