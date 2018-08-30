@@ -49,10 +49,10 @@ object Builder {
   }
 
   def makeExecutionTime(millis: Long): Value = {
+    def hhmmss = f"${millis / 1000 / 60 / 60}%02d:${millis / 1000 / 60 % 60}%02d:${millis / 1000 % 60}%02d"
     val sec = millis / 1000.0
     var text = f"$sec%.2f[Sec]"
-    if (sec > 120) text = text + f" = ${sec / 60}%.2f[Min]"
-    if (sec > 7200) text = text + f" = ${sec / 60 / 60}%.2f[Hour]"
+    if (sec > 120) text = s"$text($hhmmss)"
     Value.text(f"Execution time: $text")
   }
 
