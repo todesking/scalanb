@@ -3,6 +3,23 @@ package com.todesking.scalanb.format
 import com.todesking.scalanb.Value
 
 object Table {
+  case class Col(content: String, rowspan: Int = 1, header: Boolean = false)
+  private[this] def renderHtml(rows: Seq[Seq[Col]]): String = {
+    s"""<table style="word-wrap: break-word; font-family: monospace">
+    ${
+      rows.map { row =>
+        s"""<tr>${
+          row.map {
+            case Col(content, rowspan, header) =>
+              val td = if (header) "th" else "td"
+              val rs = if (rowspan > 1) s"""rowspan="${h(rowspan)}"""" else ""
+              s"""<$td style="text-align: right" ${rs}>${wbr(h(content))}</$td>"""
+          }.mkString("")
+        }</tr>"""
+      }.mkString("\n")
+    }
+</table>"""
+  }
   private[this] def strWidth(s: String) = s.toCharArray.map {
     case c if c < 256 => 1
     case _ => 2
@@ -22,7 +39,7 @@ object Table {
       rows.map { row => strWidth(row(i)) }.max
     }
   }
-  private[this] def h(s: String): String = s
+  private[this] def h(s: Any): String = s.toString
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -47,18 +64,8 @@ object Table {
     (header +: body).mkString("\n")
   }
 
-  private[this] def htmlTable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    s"""<table style="word-wrap: break-word; font-family: monospace">
-      <thead>${
-      colNames.map { s => s"<th>${h(s)}</th>" }.mkString("")
-    }</thead>
-      <tbody>${
-      rows.map { row =>
-        s"""<tr>\n${row.map { s => s"""<td style="text-align:right">${wbr(h(s))}</td>""" }.mkString("\n")}\n</tr>"""
-      }.mkString("\n")
-    }</tbody>
-      </table>"""
-  }
+  private[this] def htmlTable(colNames: Seq[String], rows: Seq[Seq[String]]): String =
+    renderHtml(colNames.map { c => Col(c, header = true) } +: rows.map(_.map { c => Col(c) }))
 
   def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
     requireTable(colNames, rows)
@@ -66,19 +73,24 @@ object Table {
   }
 
   private[this] def textVtable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    rows.map {
-      case row =>
-        textTable(Seq("name", "value"), colNames.zip(row).map { case (k, v) => Seq(k, v) })
-    }.zipWithIndex.map { case (t, i) => s"Item ${i + 1}:\n$t" }
-      .mkString("\n")
+    textTable(
+      Seq("item", "name", "value"),
+      rows.zipWithIndex.flatMap {
+        case (row, i) =>
+          colNames.zip(row).map { case (k, v) => Seq((i + 1).toString, k, v) }
+      })
   }
   private[this] def htmlVtable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    rows.map {
-      case row =>
-        htmlTable(Seq("name", "value"), colNames.zip(row).map { case (k, v) => Seq(k, v) })
-    }.map { t =>
-      s"<li>$t</li>"
-    }.mkString("<ol>\n", "\n", "\n</ol>")
+    renderHtml(
+      rows.zipWithIndex.flatMap {
+        case (row, i) =>
+          val c = Col(s"${i + 1}", rowspan = colNames.size, header = true)
+          row.zip(colNames).zipWithIndex.map {
+            case ((v, k), i) =>
+              if (i == 0) Seq(c, Col(k, header = true), Col(v))
+              else Seq(Col(k, header = true), Col(v))
+          }
+      })
   }
 
   def vtable(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
