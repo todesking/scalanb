@@ -18,7 +18,7 @@ object Notebook {
           def scalanb__run(spark: _root_.org.apache.spark.sql.SparkSession)(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
             import _root_.com.todesking.scalanb.spark.Implicits._
             import spark.implicits._
-            ..$stats
+            ${scalanb.Inspect.transform(c)(stats)}
           }"""
     }
 

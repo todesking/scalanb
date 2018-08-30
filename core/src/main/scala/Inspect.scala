@@ -5,11 +5,17 @@ import scala.reflect.macros.blackbox.Context
 object Inspect {
   def apply[A: c.WeakTypeTag](c: Context)(body: c.Expr[A]): c.Expr[A] = {
     import c.universe._
-    val newBody =
-      body.tree match {
-        case q"{ ..$stats }" => processStats(c)(stats)
-        case st => processStat(c)(st)
-      }
+    println("BODY: " +
+      readContent(c)(body.tree))
+    body.tree match {
+      case Block(stats, expr) => transform(c)(stats :+ expr)
+      case st => transform(c)(Seq(st))
+    }
+  }
+
+  def transform[A: c.WeakTypeTag](c: Context)(trees: Seq[c.universe.Tree]): c.Expr[A] = {
+    import c.universe._
+    val newBody = processStats(c)(trees)
     c.Expr[A](q"{ ..$newBody }")
   }
 
@@ -36,7 +42,15 @@ object Inspect {
     if (t.pos == c.universe.NoPosition || t.pos.source.content.isEmpty) {
       "<source unavailable>"
     } else {
-      t.pos.source.content.slice(t.pos.start, t.pos.end + 1).mkString("")
+      def gather(t: c.Tree): (Int, Int) =
+        if (t.pos == c.universe.NoPosition) (Int.MaxValue, 0)
+        else t.children.foldLeft((t.pos.start, t.pos.end)) {
+          case ((start, end), t) =>
+            val (start2, end2) = gather(t)
+            (math.min(start, start2), math.max(end, end2))
+        }
+      val (start, end) = gather(t)
+      t.pos.source.content.slice(start, end + 1).mkString("")
     }
   }
 }
