@@ -44,7 +44,7 @@ object Runner {
     def scalanb__run(implicit builder: Builder): Unit
   }
 
-  case class Args(out: Out, useLog: Boolean)
+  case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean)
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
@@ -55,8 +55,10 @@ object Runner {
 
     var outs = Seq.empty[Out]
     var useLog = false
+    var ipynbOnError = true
     val id = "[a-zA-Z0-9_.]+"
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
+    val ipynbOnErrorPattern = "--ipynb-on-error=(true|false)".r
     opts.foreach {
       case `outOptionPattern`(outType, outArgs) =>
         val parsedOutArgs =
@@ -65,13 +67,18 @@ object Runner {
         outs = outs :+ newOut(outType, parsedOutArgs)
       case "--log" =>
         useLog = true
+      case `ipynbOnErrorPattern`(b) =>
+        ipynbOnError = b match {
+          case "true" => true
+          case "false" => false
+        }
     }
     val theOut = outs match {
       case Seq() => newOut("file", Map())
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }
-    (Args(theOut, useLog), rest)
+    (Args(theOut, useLog, ipynbOnError), rest)
   }
 
   def runBatch(args: Array[String], target: TargetType, notebookName: String): Unit = {
@@ -91,6 +98,11 @@ object Runner {
       new Builder.Multiplex(Seq(ipynbBuilder, new Builder.Log(w)))
     }
 
+    def writeIpynb() = {
+      val filePath = out.notebook(logName, ipynbBuilder.build())
+      println(s"scalanb: Notebook log saved to ${filePath}")
+    }
+
     try {
       run(builder) { builder =>
         val _ = try {
@@ -100,13 +112,13 @@ object Runner {
             throw e.getCause
         }
       }
+    } catch {
+      case e: Throwable =>
+        if (parsedArgs.ipynbOnError) writeIpynb()
+        throw e
     } finally {
-      try {
-        val filePath = out.notebook(logName, ipynbBuilder.build())
-        println(s"scalanb: Notebook log saved to ${filePath}")
-      } finally {
-        logWriter.foreach(_.close())
-      }
+      logWriter.foreach(_.close())
     }
+    writeIpynb()
   }
 }
