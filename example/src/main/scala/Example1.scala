@@ -52,5 +52,14 @@ class Example1 {
   nb.table(colNames, rows)
   nb.vtable(colNames, rows)
 
+  def repeat(x: Int) = (0 until x).foreach { i =>
+    nb.inspect {
+      i
+      i + 1
+    }
+  }
+
+  repeat(3)
+
   throw new RuntimeException("Nested exception", new RuntimeException("Inner exception"))
 }

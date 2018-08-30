@@ -14,13 +14,15 @@ trait Builder {
 
   def quiet(): Unit
 
-  def expr(value: Unit): Unit = {}
-  def expr(value: Nothing): Unit = throw new AssertionError
+  final def expr(value: Unit): Unit = {}
+  final def expr(value: Nothing): Nothing = throw new AssertionError
 
-  def expr[A: Format](value: A): Unit =
+  def expr[A: Format](value: A): A = {
     expr(implicitly[Format[A]].apply(value))
+    value
+  }
 
-  def expr(value: Value): Unit
+  def expr(value: Value): Value
 
   def error(t: Throwable)(implicit format: ErrorFormat): Unit
 
@@ -72,8 +74,10 @@ object Builder {
       this.cells = this.cells :+ c
     }
 
-    override def expr(value: Value) =
+    override def expr(value: Value) = {
       flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)))
+      value
+    }
 
     override def error(t: Throwable)(implicit format: ErrorFormat) =
       flush(Some(format.apply(t)))
@@ -215,16 +219,16 @@ object Builder {
 
     override def quiet(): Unit = {}
 
-    override def expr(value: Unit): Unit = {}
-    override def expr(value: Nothing): Unit = {}
-
-    override def expr[A: Format](value: A): Unit =
+    override def expr[A: Format](value: A): A = {
       expr(implicitly[Format[A]].apply(value))
+      value
+    }
 
-    override def expr(value: Value): Unit = {
+    override def expr(value: Value): Value = {
       val s = value.text
       write(s, "=> ")
       flush()
+      value
     }
 
     override def error(t: Throwable)(implicit format: ErrorFormat): Unit = {
@@ -241,7 +245,7 @@ object Builder {
   }
 
   class Multiplex(children: Seq[Builder]) extends Builder {
-    private[this] def exec(f: Builder => Unit) =
+    private[this] def exec[A](f: Builder => A) =
       children.foreach(f)
 
     override def setShowTimeMillis(l: Long): Unit = exec(_.setShowTimeMillis(l))
@@ -252,9 +256,8 @@ object Builder {
 
     override def quiet(): Unit = exec(_.quiet())
 
-    override def expr(value: Unit): Unit = exec(_.expr(value))
-    override def expr[A: Format](value: A): Unit = exec(_.expr(value))
-    override def expr(value: Value): Unit = exec(_.expr(value))
+    override def expr[A: Format](value: A): A = { exec(_.expr(value)); value }
+    override def expr(value: Value): Value = { exec(_.expr(value)); value }
 
     override def error(t: Throwable)(implicit format: ErrorFormat): Unit = exec(_.error(t))
 
