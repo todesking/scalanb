@@ -48,13 +48,13 @@ object Table {
   }
 
   private[this] def htmlTable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    s"""<table style="word-wrap: break-word">
+    s"""<table style="word-wrap: break-word; font-family: monospace">
       <thead>${
       colNames.map { s => s"<th>${h(s)}</th>" }.mkString("")
     }</thead>
       <tbody>${
       rows.map { row =>
-        s"<tr>\n${row.map { s => s"<td>${wbr(h(s))}</td>" }.mkString("\n")}\n</tr>"
+        s"""<tr>\n${row.map { s => s"""<td style="text-align:right">${wbr(h(s))}</td>""" }.mkString("\n")}\n</tr>"""
       }.mkString("\n")
     }</tbody>
       </table>"""
