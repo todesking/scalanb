@@ -6,9 +6,10 @@ class Example1 {
 
   nb.markdown("# Scalanb Example")
 
-  val a = 1
-  val b = 2
+  val (a, b) = (1, 2)
   a
+
+  val aa, bb, cc = 1; aa
 
   println(s"a = $a")
   println("hello")

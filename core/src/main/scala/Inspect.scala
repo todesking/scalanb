@@ -20,36 +20,45 @@ object Inspect {
   }
 
   private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] =
-    stats.flatMap(processStat(c)(_))
+    stats.foldLeft((0, Seq.empty[c.Tree])) {
+      case ((pos, trees), t) =>
+        val (start, end) = range(c)(t)
+        val last = readContent(c)(t).last
+        val cont = end <= pos || (end == pos + 1 && (last == ';' || last == '\n'))
+        (math.max(end, pos), trees ++ processStat(c)(t, cont))
+    }._2
 
-  private[this] def processStat(c: Context)(stat: c.universe.Tree): Seq[c.universe.Tree] = {
+  private[this] def processStat(c: Context)(stat: c.universe.Tree, cont: Boolean): Seq[c.universe.Tree] = {
     import c.universe._
     val builder = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.Builder]"
     stat match {
       case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
-        val src = readContent(c)(st)
-        Seq(
-          q"$builder.code(${Literal(Constant(src))})",
-          st)
+        if (cont) Seq(st)
+        else Seq(q"$builder.code(${content(c)(st)})", st)
       case expr =>
-        Seq(
-          q"$builder.code(${Literal(Constant(readContent(c)(expr)))})",
-          q"$builder.expr($expr)")
+        val tt = q"$builder.expr($expr)"
+        if (cont) Seq(tt)
+        else Seq(q"$builder.code(${content(c)(expr)})", tt)
     }
   }
 
+  private[this] def content(c: Context)(t: c.Tree): c.Tree = {
+    import c.universe._
+    Literal(Constant(readContent(c)(t)))
+  }
+
+  private[this] def range(c: Context)(t: c.Tree): (Int, Int) =
+    if (t.pos == c.universe.NoPosition) (Int.MaxValue, 0)
+    else t.children.foldLeft((t.pos.start, t.pos.end)) {
+      case ((start, end), t) =>
+        val (start2, end2) = range(c)(t)
+        (math.min(start, start2), math.max(end, end2))
+    }
   private[this] def readContent(c: Context)(t: c.Tree): String = {
     if (t.pos == c.universe.NoPosition || t.pos.source.content.isEmpty) {
       "<source unavailable>"
     } else {
-      def gather(t: c.Tree): (Int, Int) =
-        if (t.pos == c.universe.NoPosition) (Int.MaxValue, 0)
-        else t.children.foldLeft((t.pos.start, t.pos.end)) {
-          case ((start, end), t) =>
-            val (start2, end2) = gather(t)
-            (math.min(start, start2), math.max(end, end2))
-        }
-      val (start, end) = gather(t)
+      val (start, end) = range(c)(t)
       t.pos.source.content.slice(start, end + 1).mkString("")
     }
   }
