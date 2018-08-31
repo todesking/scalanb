@@ -112,7 +112,7 @@ object Runner {
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
-      builder.markdown(s"Total execution time: ${format.Time.fromMillis(duration)}")
+      builder.markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```")
       val filePath = out.notebook(logName, ipynbBuilder.build())
       println(s"scalanb: Notebook log saved to ${filePath}")
     }
