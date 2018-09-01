@@ -1,5 +1,10 @@
 import com.todesking.{ scalanb => nb }
 
+@nb.Module
+class Module(param1: Int) {
+  val moduleValue = param1 * 100
+}
+
 @nb.Notebook
 class Example1 {
   nb.setShowTimeMillis(100)
@@ -10,6 +15,11 @@ class Example1 {
   a
 
   val aa, bb, cc = 1; aa
+
+  val myModule = new Module(param1 = 10)
+  import myModule._
+
+  moduleValue
 
   println(s"a = $a")
   println("hello")
