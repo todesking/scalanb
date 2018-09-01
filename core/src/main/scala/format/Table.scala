@@ -47,9 +47,9 @@ object Table {
     .replaceAll("'", "&#39;")
 
   private[this] def wbr(s: String): String = s
-    .replaceAll("=", "=<wbr>")
-    .replaceAll("&amp;", "&amp;<wbr>")
-    .replaceAll("%", "%<wbr>")
+    .replaceAll("=", "=<wbr></wbr>")
+    .replaceAll("&amp;", "&amp;<wbr></wbr>")
+    .replaceAll("%", "%<wbr></wbr>")
 
   private[this] def requireTable(colNames: Seq[String], rows: Seq[Seq[String]]) =
     require(rows.forall { r => r.size == colNames.size })
