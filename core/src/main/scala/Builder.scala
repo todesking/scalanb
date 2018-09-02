@@ -268,4 +268,6 @@ object Builder {
     override def finish() = exec(_.finish())
   }
 
+  val Null = new Multiplex(Seq())
+
 }
