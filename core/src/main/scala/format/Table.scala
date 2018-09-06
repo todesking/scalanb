@@ -67,6 +67,7 @@ object Table {
   private[this] def htmlTable(colNames: Seq[String], rows: Seq[Seq[String]]): String =
     renderHtml(colNames.map { c => Col(c, header = true) } +: rows.map(_.map { c => Col(c) }))
 
+  def table(rows: Seq[Seq[Col]]) = renderHtml(rows)
   def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
     requireTable(colNames, rows)
     Value.text(textTable(colNames, rows)) ++ Value.html(htmlTable(colNames, rows))
