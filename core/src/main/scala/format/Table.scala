@@ -20,6 +20,7 @@ object Table {
     }
 </table>"""
   }
+
   private[this] def strWidth(s: String) = s.toCharArray.map {
     case c if c < 256 => 1
     case _ => 2
@@ -39,6 +40,7 @@ object Table {
       rows.map { row => strWidth(row(i)) }.max
     }
   }
+
   private[this] def h(s: Any): String = s.toString
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -51,34 +53,40 @@ object Table {
     .replaceAll("&amp;", "&amp;<wbr></wbr>")
     .replaceAll("%", "%<wbr></wbr>")
 
-  private[this] def requireTable(colNames: Seq[String], rows: Seq[Seq[String]]) =
+  private[this] def requireTable(colNames: Seq[_], rows: Seq[Seq[_]]) =
     require(rows.forall { r => r.size == colNames.size })
 
-  private[this] def textTable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    val colSize = colNames.size
-    val widths = colWidths(colNames +: rows)
-    val header = colNames.zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
-    val body = rows.map { row =>
-      row.zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
-    }
-    (header +: body).mkString("\n")
+  private[this] def renderText(rows: Seq[Seq[Col]]): String = {
+    // TODO: support rowspan
+    if (rows.isEmpty) return ""
+    val colSize = rows.head.size
+    val widths = colWidths(rows.map(_.map(_.content)))
+    rows.map { row =>
+      row.map(_.content).zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
+    }.mkString("\n")
+  }
+  private[this] def renderCsv(rows: Seq[Seq[Col]]): String = {
+    def escape(s: String) = s
+      .replaceAll("\"", "\"\"")
+    def colString(s: String) = if (s.contains("\"")) s""""${escape(s)}"""" else s
+    rows.map(_.map(_.content)).map(_.map(colString).mkString(",")).mkString("\n")
   }
 
-  private[this] def htmlTable(colNames: Seq[String], rows: Seq[Seq[String]]): String =
-    renderHtml(colNames.map { c => Col(c, header = true) } +: rows.map(_.map { c => Col(c) }))
-
-  def table(rows: Seq[Seq[Col]]) = renderHtml(rows)
   def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
     requireTable(colNames, rows)
-    Value.text(textTable(colNames, rows)) ++ Value.html(htmlTable(colNames, rows))
+    table(colNames.map(Col.apply(_, header = true)) +: rows.map(_.map(Col.apply(_))))
+  }
+
+  def table(rows: Seq[Seq[Col]]): Value = {
+    require(rows.map(_.size).distinct.size == 1)
+    Value.html(renderHtml(rows)) ++ Value.text(renderText(rows)) ++ Value.csv(renderCsv(rows))
   }
 
   private[this] def textVtable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {
-    textTable(
-      Seq("item", "name", "value"),
-      rows.zipWithIndex.flatMap {
+    renderText(
+      Seq("item", "name", "value").map(Col(_, header = true)) +: rows.zipWithIndex.flatMap {
         case (row, i) =>
-          colNames.zip(row).map { case (k, v) => Seq((i + 1).toString, k, v) }
+          colNames.zip(row).map { case (k, v) => Seq((i + 1).toString, k, v).map(Col(_)) }
       })
   }
   private[this] def htmlVtable(colNames: Seq[String], rows: Seq[Seq[String]]): String = {

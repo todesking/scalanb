@@ -16,6 +16,10 @@ case class Value(data: Map[String, JsValue]) {
 }
 
 object Value {
+  def isAttachment(mimeType: String) = mimeType match {
+    case "text/csv" => true
+    case _ => false
+  }
   def apply(contentType: String, value: JsValue): Value =
     Value(Map(contentType -> value))
 
@@ -24,5 +28,8 @@ object Value {
 
   def html(s: String): Value =
     apply("text/html", JsString(s))
+
+  def csv(s: String): Value =
+    apply("text/csv", JsString(s))
 }
 

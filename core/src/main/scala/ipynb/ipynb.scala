@@ -20,8 +20,8 @@ object JsonMapping {
       jso('metadata -> metadata, 'nbformat -> nbformat, 'nbformat_minor -> nbformatMinor, 'cells -> cells)
   }
   implicit lazy val wCell: Writes[Cell] = Writes[Cell] {
-    case c @ Cell.Markdown(source) =>
-      jso('cell_type -> c.cellType, 'metadata -> JsObject(Seq()), 'source -> source)
+    case c @ Cell.Markdown(source, attachments) =>
+      jso('cell_type -> c.cellType, 'metadata -> JsObject(Seq()), 'source -> source, 'attachments -> attachments)
     case c @ Cell.Code(executionCount, source, Cell.CodeMetadata(collapsed, scroll), outputs) =>
       jso(
         'cell_type -> c.cellType,
@@ -70,7 +70,7 @@ sealed abstract class Cell(val cellType: String) {
   def source: String
 }
 object Cell {
-  case class Markdown(source: String) extends Cell("markdown")
+  case class Markdown(source: String, attachments: Map[String, Map[String, JsValue]] = Map()) extends Cell("markdown")
 
   case class Code(
     executionCount: Int,

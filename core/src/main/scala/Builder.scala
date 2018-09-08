@@ -143,6 +143,24 @@ object Builder {
           metadata = Cell.CodeMetadata(
             collapsed = false, autoscroll = false),
           outputs = outputs))
+        def extract(data: Map[String, json.JsValue]) =
+          data.zipWithIndex.collect {
+            case (("text/csv", json.JsString(s)), n) =>
+              (s"out-$executionCount-$n.csv", "text/csv", s)
+          }
+        outputs.flatMap {
+          case Output.ExecuteResult(data, metadata, count) =>
+            extract(data)
+          case Output.DisplayData(data, metadata) =>
+            extract(data)
+          case _ => Seq()
+        }.foreach {
+          case (name, mime, content) =>
+            // TODO: html escape
+            addCell(Cell.Markdown(
+              s"Attachment: [$name](attachment:$name)",
+              Map(name -> Map(mime -> json.JsString(java.util.Base64.getEncoder.encodeToString(content.getBytes))))))
+        }
         this._executionCount += 1
       }
     }
