@@ -8,29 +8,34 @@ import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 
 class Notebook extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro Notebook.macroImpl.apply
+  def macroTransform(annottees: Any*): Any = macro Notebook.macroExpand
 }
 object Notebook {
-  object macroImpl extends scalanb.Notebook.MacroImpl {
-    override def makeRunMethod(c: Context)(stats: Seq[c.universe.Tree]): c.universe.Tree = {
-      import c.universe._
-      q"""
-          def scalanb__run(spark: _root_.org.apache.spark.sql.SparkSession)(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
-            import _root_.com.todesking.scalanb.spark.Implicits._
-            import spark.implicits._
-            ${scalanb.Inspect.transform(c)(stats)}
-          }"""
-    }
+  class MacroImpl[A <: Context](c: A) extends scalanb.Notebook.MacroImpl[A](c) {
+    import context.Expr
+    import context.TypeName
+    import context.universe.Tree
+    import context.universe.Quasiquote
 
-    override def makeMain(c: Context)(tpname: c.universe.TypeName, notebookName: String): c.universe.Tree = {
-      import c.universe._
+    override def args =
+      super.args :+ q"spark: _root_.org.apache.spark.sql.SparkSession"
+
+    override def prelude =
+      super.prelude ++ Seq(
+        q"import _root_.com.todesking.scalanb.spark.Implicits._",
+        q"import spark.implicits._")
+
+    override def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        val target = new ${tpname}()
-        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $notebookName, target)
+        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $notebookName) { (builder, spark) =>
+          new $tpname()(builder, spark)
+        }
       }
       """
     }
   }
+  def macroExpand(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] =
+    new MacroImpl[c.type](c).apply(annottees: _*)
 }
 

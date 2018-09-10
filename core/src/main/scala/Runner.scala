@@ -81,18 +81,6 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError), rest)
   }
 
-  def runBatch(args: Array[String], notebookName: String, target: TargetType): Unit = {
-    import scala.language.reflectiveCalls
-    runBatch(args, notebookName) { builder =>
-      try {
-        target.scalanb__run(builder)
-      } catch {
-        case e: java.lang.reflect.InvocationTargetException =>
-          throw e.getCause
-      }
-    }
-  }
-
   def runBatch(args: Array[String], notebookName: String)(invoke: Builder => Unit): Unit = {
     val start = System.currentTimeMillis()
 

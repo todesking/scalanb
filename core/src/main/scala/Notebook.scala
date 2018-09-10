@@ -6,39 +6,39 @@ import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 
 class Notebook extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro Notebook.macroImpl.apply
+  def macroTransform(annottees: Any*): Any = macro Notebook.macroExpand
 }
 
 object Notebook {
-  trait MacroImpl {
-    def makeRunMethod(c: Context)(stats: Seq[c.universe.Tree]): c.universe.Tree = {
-      import c.universe._
-      q"""
-          def scalanb__run(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder): _root_.scala.Unit = {
-              ${Inspect.transform(c)(stats)}
-          }"""
-    }
+  class MacroImpl[A <: Context](val context: A) {
+    import context.Expr
+    import context.TypeName
+    import context.universe.Tree
+    import context.universe.Quasiquote
 
-    def makeMain(c: Context)(tpname: c.universe.TypeName, notebookName: String): c.universe.Tree = {
-      import c.universe._
+    def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        val target = new ${tpname}()
-        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, target)
+        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName) { builder => new $tpname()(builder) }
       }
       """
     }
 
-    def apply(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
-      import c.universe._
+    def args: Seq[Tree] = {
+      Seq(q"scalanb__builder: _root_.com.todesking.scalanb.Builder")
+    }
+
+    def prelude: Seq[Tree] = Seq()
+
+    def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
         case Seq(q"class $tpname () { ..$stats }") =>
           val notebookName = tpname.toString
-          val runMethod = makeRunMethod(c)(stats)
-          val mainMethod = makeMain(c)(tpname, notebookName)
-          c.Expr[Any](q"""
-            class $tpname() {
-              $runMethod
+          val mainMethod = makeMain(tpname, notebookName)
+          Expr[Any](q"""
+            class $tpname(implicit ..${args}) {
+              ..$prelude
+              ..${Inspect.transform(context)(stats)}
             }
             object ${tpname.toTermName} {
               $mainMethod
@@ -47,5 +47,7 @@ object Notebook {
       }
     }
   }
-  object macroImpl extends MacroImpl
+
+  def macroExpand(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] =
+    new MacroImpl[c.type](c).apply(annottees: _*)
 }
