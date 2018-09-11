@@ -15,6 +15,8 @@ object Notebook {
     import context.TypeName
     import context.universe.Tree
     import context.universe.Quasiquote
+    import context.universe.ClassDef
+    import context.universe.ModuleDef
 
     def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
@@ -32,19 +34,26 @@ object Notebook {
 
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
-        case Seq(q"class $tpname () { ..$stats }") =>
-          val notebookName = tpname.toString
-          val mainMethod = makeMain(tpname, notebookName)
-          Expr[Any](q"""
+        case Seq(q"class $tpname { ..$stats }") =>
+          transform(tpname, stats, Seq())
+        case Seq(q"class $tpname { ..$stats }", q"object $oname { ..$ostats }") =>
+          transform(tpname, stats, ostats)
+      }
+    }
+
+    def transform(tpname: TypeName, stats: Seq[Tree], ostats: Seq[Tree]): Expr[Any] = {
+      val notebookName = tpname.toString
+      val mainMethod = makeMain(tpname, notebookName)
+      Expr[Any](q"""
             class $tpname(implicit ..${args}) {
               ..$prelude
               ..${Inspect.transform(context)(stats)}
             }
             object ${tpname.toTermName} {
               $mainMethod
+              ..$ostats
             }
           """)
-      }
     }
   }
 

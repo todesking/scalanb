@@ -50,6 +50,8 @@ class Example1 {
     100
   }
 
+  Example1.foo()
+
   val colNames =
     Seq("id", "name", "size")
 
@@ -73,4 +75,8 @@ class Example1 {
   repeat(3)
 
   throw new RuntimeException("Nested exception", new RuntimeException("Inner exception"))
+}
+
+object Example1 {
+  def foo() = println(1)
 }
