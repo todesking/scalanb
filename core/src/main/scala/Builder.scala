@@ -8,6 +8,8 @@ import play.api.libs.json
 trait Builder {
   def setShowTimeMillis(l: Long): Unit
 
+  def wholeSource(src: String): Unit = {}
+
   def code(src: String): Unit
 
   def markdown(src: String): Unit
@@ -138,7 +140,7 @@ object Builder {
       }
       if (els.nonEmpty) {
         addCell(Cell.Code(
-          executionCount = executionCount,
+          executionCount = Some(executionCount),
           source = els.map(_.code).mkString("\n"),
           metadata = Cell.CodeMetadata(
             collapsed = false, autoscroll = false),
@@ -265,6 +267,8 @@ object Builder {
   class Multiplex(children: Seq[Builder]) extends Builder {
     private[this] def exec[A](f: Builder => A) =
       children.foreach(f)
+
+    override def wholeSource(src: String) = exec(_.wholeSource(src))
 
     override def setShowTimeMillis(l: Long): Unit = exec(_.setShowTimeMillis(l))
 

@@ -17,28 +17,34 @@ object Inspect {
     c.Expr[A](q"{ ..$newBody }")
   }
 
-  private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] =
+  def wholeSource(c: Context)(trees: Seq[c.universe.Tree]): String =
+    sources(c)(trees).flatMap(_._1).mkString("\n")
+
+  private[this] def sources(c: Context)(ts: Seq[c.Tree]): Seq[(Option[String], c.Tree)] =
     // Dirty hack to support `val (a, b) = expr` style statements
     // That statements are desugared to `val x$1 = expr match ...; val a = x._1; val b = x._2`
-    stats.foldLeft((0, Seq.empty[c.Tree])) {
+    ts.foldLeft((0, Seq.empty[(Option[String], c.Tree)])) {
       case ((pos, trees), t) =>
         val (start, end) = range(c)(t)
         val last = source(c)(t).last
         val cont = end <= pos || (end == pos + 1 && (last == ';' || last == '\n'))
-        (math.max(end, pos), trees ++ processStat(c)(t, cont))
+        val src = if (cont) None else Some(source(c)(t))
+        (math.max(end, pos), trees :+ ((src, t)))
     }._2
 
-  private[this] def processStat(c: Context)(stat: c.universe.Tree, cont: Boolean): Seq[c.universe.Tree] = {
+  private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] = {
     import c.universe._
     val builder = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.Builder]"
-    stat match {
-      case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
-        if (cont) Seq(st)
-        else Seq(q"$builder.code(${sourceLit(c)(st)})", st)
-      case expr =>
-        val tt = q"$builder.expr($expr)"
-        if (cont) Seq(tt)
-        else Seq(q"$builder.code(${sourceLit(c)(expr)})", tt)
+    sources(c)(stats).flatMap {
+      case (src, stat) =>
+        val srcStat = src.map { s => q"$builder.code($s)" }
+        val modStat = stat match {
+          case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
+            st
+          case expr =>
+            q"$builder.expr($expr)"
+        }
+        srcStat.toSeq :+ modStat
     }
   }
 

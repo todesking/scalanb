@@ -81,7 +81,7 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError), rest)
   }
 
-  def runBatch(args: Array[String], notebookName: String)(invoke: Builder => Unit): Unit = {
+  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: Builder => Unit): Unit = {
     val start = System.currentTimeMillis()
 
     val (parsedArgs, _) = parseArgs(args)
@@ -104,6 +104,8 @@ object Runner {
       val filePath = out.notebook(logName, ipynbBuilder.build())
       println(s"scalanb: Notebook log saved to ${filePath}")
     }
+
+    builder.wholeSource(src)
 
     try {
       run(builder)(invoke)

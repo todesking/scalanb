@@ -15,13 +15,11 @@ object Notebook {
     import context.TypeName
     import context.universe.Tree
     import context.universe.Quasiquote
-    import context.universe.ClassDef
-    import context.universe.ModuleDef
 
     def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName) { builder => new $tpname()(builder) }
+        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, this.scalanb__source) { builder => new $tpname()(builder) }
       }
       """
     }
@@ -34,14 +32,16 @@ object Notebook {
 
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
-        case Seq(q"class $tpname { ..$stats }") =>
-          transform(tpname, stats, Seq())
-        case Seq(q"class $tpname { ..$stats }", q"object $oname { ..$ostats }") =>
-          transform(tpname, stats, ostats)
+        case Seq(cdef @ q"class $tpname { ..$stats }") =>
+          val src = stats.map(Inspect.source(context)(_)).mkString("\n")
+          transform(tpname, stats, Seq(), src)
+        case Seq(cdef @ q"class $tpname { ..$stats }", q"object $oname { ..$ostats }") =>
+          val src = Inspect.wholeSource(context)(stats)
+          transform(tpname, stats, ostats, src)
       }
     }
 
-    def transform(tpname: TypeName, stats: Seq[Tree], ostats: Seq[Tree]): Expr[Any] = {
+    def transform(tpname: TypeName, stats: Seq[Tree], ostats: Seq[Tree], src: String): Expr[Any] = {
       val notebookName = tpname.toString
       val mainMethod = makeMain(tpname, notebookName)
       Expr[Any](q"""
@@ -51,6 +51,7 @@ object Notebook {
             }
             object ${tpname.toTermName} {
               $mainMethod
+              def scalanb__source: _root_.java.lang.String = $src
               ..$ostats
             }
           """)

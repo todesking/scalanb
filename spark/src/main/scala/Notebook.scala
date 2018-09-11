@@ -28,7 +28,7 @@ object Notebook {
     override def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $notebookName) { (builder, spark) =>
+        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $notebookName, this.scalanb__source) { (builder, spark) =>
           new $tpname()(builder, spark)
         }
       }

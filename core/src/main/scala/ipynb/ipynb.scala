@@ -73,7 +73,7 @@ object Cell {
   case class Markdown(source: String, attachments: Map[String, Map[String, JsValue]] = Map()) extends Cell("markdown")
 
   case class Code(
-    executionCount: Int,
+    executionCount: Option[Int],
     source: String,
     metadata: CodeMetadata,
     outputs: Seq[Output]) extends Cell("code") {
