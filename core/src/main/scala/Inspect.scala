@@ -5,8 +5,6 @@ import scala.reflect.macros.blackbox.Context
 object Inspect {
   def apply[A: c.WeakTypeTag](c: Context)(body: c.Expr[A]): c.Expr[A] = {
     import c.universe._
-    println("BODY: " +
-      readContent(c)(body.tree))
     body.tree match {
       case Block(stats, expr) => transform(c)(stats :+ expr)
       case st => transform(c)(Seq(st))
@@ -25,7 +23,7 @@ object Inspect {
     stats.foldLeft((0, Seq.empty[c.Tree])) {
       case ((pos, trees), t) =>
         val (start, end) = range(c)(t)
-        val last = readContent(c)(t).last
+        val last = source(c)(t).last
         val cont = end <= pos || (end == pos + 1 && (last == ';' || last == '\n'))
         (math.max(end, pos), trees ++ processStat(c)(t, cont))
     }._2
@@ -36,32 +34,48 @@ object Inspect {
     stat match {
       case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
         if (cont) Seq(st)
-        else Seq(q"$builder.code(${content(c)(st)})", st)
+        else Seq(q"$builder.code(${sourceLit(c)(st)})", st)
       case expr =>
         val tt = q"$builder.expr($expr)"
         if (cont) Seq(tt)
-        else Seq(q"$builder.code(${content(c)(expr)})", tt)
+        else Seq(q"$builder.code(${sourceLit(c)(expr)})", tt)
     }
   }
 
-  private[this] def content(c: Context)(t: c.Tree): c.Tree = {
+  private[this] def sourceLit(c: Context)(t: c.Tree): c.Tree = {
     import c.universe._
-    Literal(Constant(readContent(c)(t)))
+    Literal(Constant(source(c)(t)))
   }
 
-  private[this] def range(c: Context)(t: c.Tree): (Int, Int) =
-    if (t.pos == c.universe.NoPosition) (Int.MaxValue, 0)
-    else t.children.foldLeft((t.pos.start, t.pos.end)) {
-      case ((start, end), t) =>
-        val (start2, end2) = range(c)(t)
-        (math.min(start, start2), math.max(end, end2))
+  private[this] def rangeUnion(l: (Int, Int), r: (Int, Int)) = (math.min(l._1, r._1), math.max(l._2, r._2))
+
+  private[this] def range(c: Context)(t: c.Tree): (Int, Int) = {
+    val noP = (Int.MaxValue, 0)
+    val initialP = if (t.pos == c.universe.NoPosition) noP else (t.pos.start, t.pos.end)
+    val childrenP =
+      t.children.foldLeft(initialP) { (p, t) =>
+        rangeUnion(p, range(c)(t))
+      }
+    import c.universe._
+    val specialP = t match {
+      case ClassDef(mods, name, tparams, impl) =>
+        (tparams.map(range(c)(_)) :+ range(c)(impl)).reduceOption(rangeUnion) getOrElse noP
+      case Template(parents, self, body) =>
+        ((parents :+ self) ++ body).map(range(c)(_)).reduceOption(rangeUnion) getOrElse noP
+      case _ => noP
     }
-  private[this] def readContent(c: Context)(t: c.Tree): String = {
-    if (t.pos == c.universe.NoPosition || t.pos.source.content.isEmpty) {
-      "<source unavailable>"
-    } else {
-      val (start, end) = range(c)(t)
-      t.pos.source.content.slice(start, end + 1).mkString("")
+    rangeUnion(childrenP, specialP)
+  }
+
+  // Read raw source code from tree(NOTE: *best effort*)
+  def source(c: Context)(t: c.Tree): String = {
+    def content(t: c.Tree): Array[Char] = {
+      val c = t.pos.source.content
+      if (c.nonEmpty) c
+      else t.children.map(content).find(_.nonEmpty) getOrElse Array()
     }
+    val (start, end) = range(c)(t)
+    if (start == Int.MaxValue) "<source unavailable>"
+    else content(t).slice(start, end + 1).mkString("")
   }
 }
