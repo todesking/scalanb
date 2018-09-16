@@ -7,17 +7,30 @@ import java.io.Writer
 
 trait Out {
   def prepare(): Unit
-  def notebook(name: String, ast: ipynb.Notebook): String
-  def openLog(name: String): Writer
+
+  final def notebook(name: String, ast: ipynb.Notebook): Unit = {
+    val src = ipynb.JsonMapping.toJson(ast, pretty = true)
+    prepare()
+    write(s"$name.ipynb", src)
+  }
+
+  final def openLog(name: String): Writer = newWriter(s"$name.log")
+
+  def write(fileName: String, content: String) = {
+    val w = newWriter(fileName)
+    try { w.write(content.toCharArray) }
+    finally { w.close() }
+  }
+
+  def newWriter(fileName: String): Writer
 }
 
 class MultiOut(outs: Seq[Out]) extends Out {
   override def prepare() = outs.foreach(_.prepare())
-  override def notebook(name: String, ast: ipynb.Notebook) =
-    outs.map(_.notebook(name, ast)).mkString(", ")
-  override def openLog(name: String) = {
+
+  override def newWriter(name: String) = {
     // TODO: better error handling
-    val children = outs.map(_.openLog(name))
+    val children = outs.map(_.newWriter(name))
     new Writer {
       override def write(cbuf: Array[Char], off: Int, len: Int) =
         children.foreach(_.write(cbuf, off, len))
@@ -48,15 +61,6 @@ class FileOut(val path: Path) extends Out {
     val _ = path.toFile.mkdirs()
   }
 
-  override def notebook(name: String, ast: ipynb.Notebook): String = {
-    import scala.collection.JavaConverters._
-    val src = ipynb.JsonMapping.toJson(ast, pretty = true)
-    prepare()
-    val filePath = path.resolve(s"$name.ipynb")
-    val _ = Files.write(filePath, Seq(src).asJava)
-    filePath.toString
-  }
-
-  override def openLog(name: String) =
-    Files.newBufferedWriter(path.resolve(s"$name.log"))
+  override def newWriter(name: String) =
+    Files.newBufferedWriter(path.resolve(name))
 }

@@ -1,13 +1,14 @@
 package com.todesking.scalanb.spark
 
 import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types
 
 import com.todesking.scalanb.Value
 import com.todesking.scalanb.Format
 import com.todesking.scalanb.format.Table
 
-object Implicits {
+trait Implicits {
   implicit class DatasetNB[A](val self: Dataset[A]) {
     def nb: ImplicitsUtil.NBOps[A] = new ImplicitsUtil.NBOps[A](self)
   }
@@ -16,6 +17,8 @@ object Implicits {
     ImplicitsUtil.formatDataset(ds)
   }
 }
+
+class AllImplicits(protected override val spark: SparkSession) extends Implicits with cache.Implicits
 
 object ImplicitsUtil {
   class NBOps[A](self: Dataset[A]) {

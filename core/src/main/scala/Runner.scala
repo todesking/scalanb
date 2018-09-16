@@ -44,7 +44,7 @@ object Runner {
     def scalanb__run(implicit builder: Builder): Unit
   }
 
-  case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean)
+  case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean)
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
@@ -56,9 +56,11 @@ object Runner {
     var outs = Seq.empty[Out]
     var useLog = false
     var ipynbOnError = true
+    var saveSource = false
     val id = "[a-zA-Z0-9_.]+"
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
     val ipynbOnErrorPattern = "--ipynb-on-error=(true|false)".r
+    val saveSourcePattern = "--save-source=(true|false)".r
     opts.foreach {
       case `outOptionPattern`(outType, outArgs) =>
         val parsedOutArgs =
@@ -72,13 +74,18 @@ object Runner {
           case "true" => true
           case "false" => false
         }
+      case `saveSourcePattern`(b) =>
+        saveSource = b match {
+          case "true" => true
+          case "false" => false
+        }
     }
     val theOut = outs match {
       case Seq() => newOut("file", Map())
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }
-    (Args(theOut, useLog, ipynbOnError), rest)
+    (Args(theOut, useLog, ipynbOnError, saveSource), rest)
   }
 
   def runBatch(args: Array[String], notebookName: String, src: String)(invoke: Builder => Unit): Unit = {
@@ -101,11 +108,11 @@ object Runner {
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
       builder.markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```")
-      val filePath = out.notebook(logName, ipynbBuilder.build())
-      println(s"scalanb: Notebook log saved to ${filePath}")
+      out.notebook(logName, ipynbBuilder.build())
     }
 
-    builder.wholeSource(src)
+    if (parsedArgs.saveSource)
+      out.write(s"$logName.scala", src)
 
     try {
       run(builder)(invoke)
