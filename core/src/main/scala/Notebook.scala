@@ -19,13 +19,13 @@ object Notebook {
     def makeMain(tpname: TypeName, notebookName: String): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, this.scalanb__source) { builder => new $tpname()(builder) }
+        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, this.scalanb__source) { ctx => new $tpname()(ctx) }
       }
       """
     }
 
     def args: Seq[Tree] = {
-      Seq(q"scalanb__builder: _root_.com.todesking.scalanb.Builder")
+      Seq(q"scalanb__context: _root_.com.todesking.scalanb.NotebookContext")
     }
 
     def prelude: Seq[Tree] = Seq()
@@ -45,7 +45,7 @@ object Notebook {
       val notebookName = tpname.toString
       val mainMethod = makeMain(tpname, notebookName)
       Expr[Any](q"""
-            class $tpname(implicit ..${args}) {
+            class $tpname(implicit ..$args) {
               ..$prelude
               ..${Inspect.transform(context)(stats)}
             }

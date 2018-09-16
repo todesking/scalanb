@@ -25,7 +25,7 @@ object IO {
       s"$basePath/${pathString(id)}"
     }
     override def write(id: DepID, data: Array[Byte]) = {
-      Files.write(Paths.get(path(id)), data)
+      val _ = Files.write(Paths.get(path(id)), data)
     }
     override def read(id: DepID): Option[Array[Byte]] = {
       val p = Paths.get(path(id))

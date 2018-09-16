@@ -15,13 +15,13 @@ object Module {
       import c.universe._
       annottees.map(_.tree) match {
         case Seq(q"class $tpname (...$args) { ..$stats }") =>
-          val builder = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.Builder]"
+          val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NotebookContext]"
           val moduleName = tpname.toString
           c.Expr[Any](q"""
-            class $tpname(...$args)(implicit scalanb__builder: _root_.com.todesking.scalanb.Builder)  {
-              $builder.markdown("```\nEntering module: " + $moduleName + " \n```")
+            class $tpname(...$args)(implicit scalanb__context: _root_.com.todesking.scalanb.NotebookContext)  {
+              $ctx.event.markdown("```\nEntering module: " + $moduleName + " \n```")
               ..${Inspect.transform(c)(stats)}
-              $builder.markdown("```\nDone: " + $moduleName + " \n```")
+              $ctx.event.markdown("```\nDone: " + $moduleName + " \n```")
             }
           """)
       }

@@ -4,13 +4,13 @@ import com.todesking.scalanb.format.Table
 import scala.language.experimental.macros
 
 package object scalanb {
-  def markdown(src: String)(implicit b: Builder): Unit = {
-    b.quiet() // Cancel current execution log
-    b.markdown(src)
+  def markdown(src: String)(implicit ctx: NotebookContext): Unit = {
+    ctx.event.quiet() // Cancel current execution log
+    ctx.event.markdown(src)
   }
 
-  def setShowTimeMillis(l: Long)(implicit b: Builder): Unit =
-    b.setShowTimeMillis(l)
+  def setShowTimeMillis(l: Long)(implicit ctx: NotebookContext): Unit =
+    ctx.setShowTimeMillis(l)
 
   def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value =
     Table.table(colNames, rows)
@@ -18,8 +18,8 @@ package object scalanb {
   def vtable(colNames: Seq[String], rows: Seq[Seq[String]]): Value =
     Table.vtable(colNames, rows)
 
-  def display[A](value: A)(implicit b: Builder, format: Format[A]): Unit =
-    b.display(format(value))
+  def display[A](value: A)(implicit ctx: NotebookContext, format: Format[A]): Unit =
+    ctx.event.display(format(value))
 
   def inspect[A](body: A): A = macro Inspect.apply[A]
 }

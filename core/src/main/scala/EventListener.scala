@@ -5,8 +5,12 @@ import com.todesking.scalanb.ipynb.Output
 
 import play.api.libs.json
 
-trait Builder {
-  def setShowTimeMillis(l: Long): Unit
+trait EventListener {
+  private[this] var _config: NotebookConfig = _
+  def config = _config
+  def setConfigInternal(c: NotebookConfig): Unit = {
+    _config = c
+  }
 
   def wholeSource(src: String): Unit = {}
 
@@ -35,7 +39,7 @@ trait Builder {
   def finish(): Unit = {}
 }
 
-object Builder {
+object EventListener {
   sealed abstract class Content
   object Content {
     case class StdOut(value: String) extends Content
@@ -57,7 +61,7 @@ object Builder {
     Value.text(f"Execution time: $text")
   }
 
-  class Ipynb extends Builder {
+  class Ipynb extends EventListener {
     private[this] var _executionCount = 1
     def executionCount = _executionCount
 
@@ -65,12 +69,6 @@ object Builder {
 
     private[this] var execLogs = Seq.empty[ExecLog]
     private[this] var currentExecLog: Option[ExecLog] = None
-
-    var _showTimeMillis: Long = 5 * 1000L
-    def showTimeMillis = _showTimeMillis
-    override def setShowTimeMillis(l: Long) = {
-      _showTimeMillis = l
-    }
 
     private[this] def addCell(c: Cell) = {
       this.cells = this.cells :+ c
@@ -96,7 +94,7 @@ object Builder {
     override def code(s: String) = {
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis() - el.startAt
-        if (duration > showTimeMillis) {
+        if (duration > config.showTimeMillis) {
           // First, flush previous exec logs
           this.currentExecLog = None
           flush(None)
@@ -172,7 +170,7 @@ object Builder {
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis - el.startAt
         val outs =
-          if (duration > showTimeMillis)
+          if (duration > config.showTimeMillis)
             Seq(ipynb.Output.DisplayData(
               makeExecutionTime(duration).data, Map())) ++ res
           else
@@ -195,11 +193,10 @@ object Builder {
     override def finish() = flush(None)
   }
 
-  class Log(writer: java.io.PrintWriter) extends Builder {
+  class Log(writer: java.io.PrintWriter) extends EventListener {
     private[this] val sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
     private[this] var startAt: Option[Long] = None
-    private[this] var showTimeMillis = 5000L
 
     private[this] def newLine() = writer.println()
 
@@ -217,15 +214,11 @@ object Builder {
 
     private[this] def flush() = {
       startAt.map(System.currentTimeMillis() - _)
-        .filter(_ >= showTimeMillis)
+        .filter(_ >= config.showTimeMillis)
         .foreach { duration =>
           write(makeExecutionTime(duration).text, "")
         }
       startAt = None
-    }
-
-    override def setShowTimeMillis(l: Long): Unit = {
-      showTimeMillis = l
     }
 
     override def code(src: String): Unit = {
@@ -264,13 +257,16 @@ object Builder {
     override def finish() = flush()
   }
 
-  class Multiplex(children: Seq[Builder]) extends Builder {
-    private[this] def exec[A](f: Builder => A) =
+  class Multiplex(children: Seq[EventListener]) extends EventListener {
+    private[this] def exec[A](f: EventListener => A) =
       children.foreach(f)
 
-    override def wholeSource(src: String) = exec(_.wholeSource(src))
+    override def setConfigInternal(c: NotebookConfig) = {
+      super.setConfigInternal(c)
+      exec(_.setConfigInternal(c))
+    }
 
-    override def setShowTimeMillis(l: Long): Unit = exec(_.setShowTimeMillis(l))
+    override def wholeSource(src: String) = exec(_.wholeSource(src))
 
     override def code(src: String): Unit = exec(_.code(src))
 

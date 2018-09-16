@@ -34,15 +34,15 @@ object Inspect {
 
   private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] = {
     import c.universe._
-    val builder = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.Builder]"
+    val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NotebookContext]"
     sources(c)(stats).flatMap {
       case (src, stat) =>
-        val srcStat = src.map { s => q"$builder.code($s)" }
+        val srcStat = src.map { s => q"$ctx.event.code($s)" }
         val modStat = stat match {
           case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
             st
           case expr =>
-            q"$builder.expr($expr)"
+            q"$ctx.event.expr($expr)"
         }
         srcStat.toSeq :+ modStat
     }

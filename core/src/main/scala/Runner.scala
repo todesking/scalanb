@@ -4,20 +4,20 @@ import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 
 object Runner {
-  def run[A](builder: Builder)(f: Builder => A): A = {
+  def run[A](ctx: NotebookContext)(f: NotebookContext => A): A = {
     val tappedOut = TappedPrintStream(System.out) { str =>
-      builder.stdout(str)
+      ctx.event.stdout(str)
     }
     val tappedErr = TappedPrintStream(System.out) { str =>
-      builder.stderr(str)
+      ctx.event.stderr(str)
     }
 
     IO.withOuts(tappedOut, tappedErr) {
       try {
-        f(builder)
+        f(ctx)
       } catch {
         case e: Throwable =>
-          builder.error(e)
+          ctx.event.error(e)
           // TODO: Write incomplete notebook
           throw e
       }
@@ -41,7 +41,7 @@ object Runner {
   }
 
   type TargetType = {
-    def scalanb__run(implicit builder: Builder): Unit
+    def scalanb__run(implicit ctx: NotebookContext): Unit
   }
 
   case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean)
@@ -88,7 +88,7 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError, saveSource), rest)
   }
 
-  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: Builder => Unit): Unit = {
+  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: NotebookContext => Unit): Unit = {
     val start = System.currentTimeMillis()
 
     val (parsedArgs, _) = parseArgs(args)
@@ -100,22 +100,23 @@ object Runner {
       if (parsedArgs.useLog) Some(new java.io.PrintWriter(out.openLog(logName)))
       else None
 
-    val ipynbBuilder = new Builder.Ipynb()
-    val builder = logWriter.fold[Builder](ipynbBuilder) { w =>
-      new Builder.Multiplex(Seq(ipynbBuilder, new Builder.Log(w)))
+    val ipynbListener = new EventListener.Ipynb()
+    val listeners = logWriter.fold[Seq[EventListener]](Seq(ipynbListener)) { w =>
+      Seq(ipynbListener, new EventListener.Log(w))
     }
+    val ctx = new NotebookContext(notebookName, listeners)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
-      builder.markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```")
-      out.notebook(logName, ipynbBuilder.build())
+      ctx.event.markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```")
+      out.notebook(logName, ipynbListener.build())
     }
 
     if (parsedArgs.saveSource)
       out.write(s"$logName.scala", src)
 
     try {
-      run(builder)(invoke)
+      run(ctx)(invoke)
     } catch {
       case e: Throwable =>
         if (parsedArgs.ipynbOnError) writeIpynb()
