@@ -25,7 +25,7 @@ object Notebook {
     }
 
     def args: Seq[Tree] = {
-      Seq(q"scalanb__context: _root_.com.todesking.scalanb.NotebookContext")
+      Seq(q"scalanb__context: _root_.com.todesking.scalanb.NBContext")
     }
 
     def prelude: Seq[Tree] = Seq()

@@ -1,9 +1,6 @@
 package com.todesking.scalanb.io
 
-import java.nio.file.Paths
-import java.nio.file.Files
 import java.io.{ InputStream, OutputStream }
-import java.io.{ BufferedInputStream, BufferedOutputStream }
 import java.io.{ InputStreamReader, OutputStreamWriter }
 import java.io.{ BufferedReader, BufferedWriter }
 import java.util.stream.Collectors

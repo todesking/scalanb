@@ -34,7 +34,7 @@ object Inspect {
 
   private[this] def processStats(c: Context)(stats: Seq[c.universe.Tree]): Seq[c.universe.Tree] = {
     import c.universe._
-    val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NotebookContext]"
+    val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NBContext]"
     sources(c)(stats).flatMap {
       case (src, stat) =>
         val srcStat = src.map { s => q"$ctx.event.code($s)" }

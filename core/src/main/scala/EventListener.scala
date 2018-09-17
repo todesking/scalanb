@@ -6,9 +6,9 @@ import com.todesking.scalanb.ipynb.Output
 import play.api.libs.json
 
 trait EventListener {
-  private[this] var _config: NotebookConfig = _
+  private[this] var _config: NBConfig = _
   def config = _config
-  def setConfigInternal(c: NotebookConfig): Unit = {
+  def setConfigInternal(c: NBConfig): Unit = {
     _config = c
   }
 
@@ -261,7 +261,7 @@ object EventListener {
     private[this] def exec[A](f: EventListener => A) =
       children.foreach(f)
 
-    override def setConfigInternal(c: NotebookConfig) = {
+    override def setConfigInternal(c: NBConfig) = {
       super.setConfigInternal(c)
       exec(_.setConfigInternal(c))
     }

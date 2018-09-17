@@ -5,7 +5,7 @@ import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
 
 object Runner {
-  def run[A](ctx: NotebookContext)(f: NotebookContext => A): A = {
+  def run[A](ctx: NBContext)(f: NBContext => A): A = {
     val tappedOut = TappedPrintStream(System.out) { str =>
       ctx.event.stdout(str)
     }
@@ -74,7 +74,7 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError, saveSource), rest)
   }
 
-  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: NotebookContext => Unit): Unit = {
+  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: NBContext => Unit): Unit = {
     val start = System.currentTimeMillis()
 
     val (parsedArgs, _) = parseArgs(args)
@@ -90,7 +90,7 @@ object Runner {
     val listeners = logWriter.fold[Seq[EventListener]](Seq(ipynbListener)) { w =>
       Seq(ipynbListener, new EventListener.Log(w))
     }
-    val ctx = new NotebookContext(notebookName, listeners)
+    val ctx = new NBContext(notebookName, listeners)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
