@@ -34,5 +34,6 @@ lazy val spark = project
   .settings(sparkCross)
 lazy val sparkTest = project.in(file("spark-test"))
   .dependsOn(spark)
+  .dependsOn(test)
   .settings(versionSetting)
   .settings(sparkCross)
