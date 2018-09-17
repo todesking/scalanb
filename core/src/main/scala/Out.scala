@@ -2,8 +2,9 @@ package com.todesking.scalanb
 
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.Files
 import java.io.Writer
+
+import com.todesking.scalanb.io.LocalFileSystem
 
 trait Out {
   def prepare(): Unit
@@ -57,10 +58,12 @@ class FileOutFactory extends OutFactory {
 }
 
 class FileOut(val path: Path) extends Out {
+  val fs = new LocalFileSystem(path.toString)
+
   override def prepare(): Unit = {
-    val _ = path.toFile.mkdirs()
+    val _ = fs.prepare()
   }
 
   override def newWriter(name: String) =
-    Files.newBufferedWriter(path.resolve(name))
+    fs.newWriter(name)
 }
