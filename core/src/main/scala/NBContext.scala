@@ -1,6 +1,6 @@
 package com.todesking.scalanb
 
-class NBContext(name: String, listeners: Seq[EventListener]) {
+class NBContext(name: String, listeners: Seq[EventListener], cacheFS: cache.CacheFS) {
   val event: EventListener = new EventListener.Multiplex(listeners)
 
   private[this] var _config: NBConfig = _
@@ -10,6 +10,11 @@ class NBContext(name: String, listeners: Seq[EventListener]) {
     event.setConfigInternal(_config)
   }
   setConfig(NBConfig.default)
+
+  lazy val checkpoint = {
+    cacheFS.underlying.prepare()
+    new cache.Checkpoint(cacheFS)
+  }
 
   def setShowTimeMillis(l: Long): Unit = {
     setConfig(config.copy(showTimeMillis = l))

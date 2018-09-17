@@ -3,6 +3,7 @@ package com.todesking.scalanb
 import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
+import com.todesking.scalanb.cache.CacheFS
 
 object Runner {
   def run[A](ctx: NBContext)(f: NBContext => A): A = {
@@ -30,10 +31,13 @@ object Runner {
     s"${sdf.format(new java.util.Date())}_$name"
   }
 
-  case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean)
+  case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean, fsForCache: FileSystem)
 
   def defaultHistPathFor(fsName: String): String =
     s"${FileSystem.getFactory("file").homePath}/.scalanb/hist"
+
+  def defaultCachePathFor(fsName: String): String =
+    s"${FileSystem.getFactory("file").homePath}/.scalanb/cache"
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
@@ -42,14 +46,17 @@ object Runner {
     }
     val opts = args.takeWhile(_ != "--")
 
+    var fsForCache = FileSystem.newFS("file", defaultCachePathFor("file"))
     var outs = Seq.empty[Out]
     var useLog = false
     var ipynbOnError = true
     var saveSource = false
+
     val id = "[a-zA-Z0-9_.]+"
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
     val ipynbOnErrorPattern = "--ipynb-on-error=(true|false)".r
     val saveSourcePattern = "--save-source=(true|false)".r
+
     opts.foreach {
       case `outOptionPattern`(outType, outArgs) =>
         val parsedOutArgs =
@@ -75,7 +82,7 @@ object Runner {
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }
-    (Args(theOut, useLog, ipynbOnError, saveSource), rest)
+    (Args(theOut, useLog, ipynbOnError, saveSource, fsForCache), rest)
   }
 
   def runBatch(args: Array[String], notebookName: String, src: String)(invoke: NBContext => Unit): Unit = {
@@ -94,7 +101,8 @@ object Runner {
     val listeners = logWriter.fold[Seq[EventListener]](Seq(ipynbListener)) { w =>
       Seq(ipynbListener, new EventListener.Log(w))
     }
-    val ctx = new NBContext(notebookName, listeners)
+    val cacheFS = new CacheFS(parsedArgs.fsForCache, notebookName)
+    val ctx = new NBContext(notebookName, listeners, cacheFS)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start

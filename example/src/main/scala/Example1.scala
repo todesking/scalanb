@@ -8,6 +8,7 @@ class Module(param1: Int) {
 @nb.Notebook
 class Example1 {
   nb.setShowTimeMillis(100)
+  val cp = nb.checkpoint
 
   nb.markdown("# Scalanb Example")
 
@@ -51,6 +52,13 @@ class Example1 {
   }
 
   Example1.foo()
+
+  val cachedValue = cp.cache((a, b)) {
+    case (a, b) =>
+      println("Calculating...")
+      a + b
+  }
+  cachedValue
 
   val colNames =
     Seq("id", "name", "size")

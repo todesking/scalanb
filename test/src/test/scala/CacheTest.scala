@@ -3,7 +3,7 @@ package test
 import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Cacheable }
 
 class CacheTest extends org.scalatest.FunSpec {
-  class MemoryFS extends CacheFS(null) {
+  class MemoryFS extends CacheFS(null, "test") {
     var cache = scala.collection.mutable.Map.empty[DepID, Array[Byte]]
     override def path(id: DepID) = ???
     override def write(id: DepID, data: Array[Byte]) = {
