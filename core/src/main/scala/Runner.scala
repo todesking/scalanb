@@ -54,16 +54,23 @@ object Runner {
 
     val id = "[a-zA-Z0-9_.]+"
     val outOptionPattern = s"--out=($id)(?::(.+))?".r
+    val cacheOptionPattern = s"--cache=($id)(?::(.+))?".r
     val ipynbOnErrorPattern = "--ipynb-on-error=(true|false)".r
     val saveSourcePattern = "--save-source=(true|false)".r
 
+    def parseKV(arg: String) =
+      if (arg == null) Map.empty[String, String]
+      else arg.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
+
     opts.foreach {
-      case `outOptionPattern`(outType, outArgs) =>
-        val parsedOutArgs =
-          if (outArgs == null) Map.empty[String, String]
-          else outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
-        val path = parsedOutArgs.get("path") getOrElse defaultHistPathFor(outType)
-        outs = outs :+ new FSOut(FileSystem.newFS(outType, path))
+      case `outOptionPattern`(fsName, subArgs) =>
+        val kvs = parseKV(subArgs)
+        val path = kvs.get("path") getOrElse defaultHistPathFor(fsName)
+        outs = outs :+ new FSOut(FileSystem.newFS(fsName, path))
+      case `cacheOptionPattern`(fsName, subArgs) =>
+        val kvs = parseKV(subArgs)
+        val path = kvs.get("path") getOrElse defaultCachePathFor(fsName)
+        fsForCache = FileSystem.newFS(fsName, path)
       case "--log" =>
         useLog = true
       case `ipynbOnErrorPattern`(b) =>
