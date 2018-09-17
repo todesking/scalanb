@@ -1,9 +1,7 @@
 package com.todesking.scalanb.io
 
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
-import java.io.{ Reader, Writer }
 import java.io.{ InputStream, OutputStream }
 import java.io.{ BufferedInputStream, BufferedOutputStream }
 import java.io.{ InputStreamReader, OutputStreamWriter }
@@ -40,32 +38,20 @@ trait FileSystem {
   }
 }
 
-class LocalFileSystem(override val basePath: String) extends FileSystem {
-  private[this] val base = Paths.get(basePath)
-
-  private[this] def prepareWrite(path: String): Unit = {
-    val _ = Files.createDirectories(base.resolve(path).getParent)
+object FileSystem {
+  def newFS(fsName: String, args: Map[String, String]): FileSystem = {
+    val loader = java.util.ServiceLoader.load(classOf[FileSystemFactory])
+    loader.iterator.asScala
+      .toSeq
+      .filter(_.name == fsName)
+      .headOption
+      .getOrElse { throw new RuntimeException(s"Unknown filesystem: $fsName") }
+      .newFS(args)
   }
-
-  override val protocol = "file"
-
-  override def prepare() = {
-    val _ = Files.createDirectories(base)
-  }
-  override def newInputStream(path: String) =
-    new BufferedInputStream(Files.newInputStream(base.resolve(path)))
-  override def newOutputStream(path: String) = {
-    prepareWrite(path)
-    new BufferedOutputStream(Files.newOutputStream(base.resolve(path)))
-  }
-
-  override def list(path: String) = {
-    Files.list(base.resolve(path))
-      .collect(Collectors.toList())
-      .asScala
-      .map(_.getFileName.toString)
-  }
-
-  override def exists(path: String) =
-    Files.exists(base.resolve(path))
 }
+
+trait FileSystemFactory {
+  val name: String
+  def newFS(args: Map[String, String]): FileSystem
+}
+

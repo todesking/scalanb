@@ -2,6 +2,7 @@ package com.todesking.scalanb
 
 import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
+import com.todesking.scalanb.io.FileSystem
 
 object Runner {
   def run[A](ctx: NotebookContext)(f: NotebookContext => A): A = {
@@ -29,21 +30,6 @@ object Runner {
     s"${sdf.format(new java.util.Date())}_$name"
   }
 
-  def newOut(outType: String, args: Map[String, String]): Out = {
-    import scala.collection.JavaConverters._
-    val loader = java.util.ServiceLoader.load(classOf[OutFactory])
-    loader.iterator.asScala
-      .toSeq
-      .filter(_.name == outType)
-      .headOption
-      .getOrElse { throw new RuntimeException(s"Unknown out type: $outType") }
-      .newOut(args)
-  }
-
-  type TargetType = {
-    def scalanb__run(implicit ctx: NotebookContext): Unit
-  }
-
   case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean)
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
@@ -66,7 +52,7 @@ object Runner {
         val parsedOutArgs =
           if (outArgs == null) Map.empty[String, String]
           else outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
-        outs = outs :+ newOut(outType, parsedOutArgs)
+        outs = outs :+ new FSOut(FileSystem.newFS(outType, parsedOutArgs))
       case "--log" =>
         useLog = true
       case `ipynbOnErrorPattern`(b) =>
@@ -81,7 +67,7 @@ object Runner {
         }
     }
     val theOut = outs match {
-      case Seq() => newOut("file", Map())
+      case Seq() => new FSOut(FileSystem.newFS("file", Map()))
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }

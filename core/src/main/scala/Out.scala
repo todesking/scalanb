@@ -1,10 +1,8 @@
 package com.todesking.scalanb
 
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.io.Writer
 
-import com.todesking.scalanb.io.LocalFileSystem
+import com.todesking.scalanb.io.FileSystem
 
 trait Out {
   def prepare(): Unit
@@ -41,25 +39,7 @@ class MultiOut(outs: Seq[Out]) extends Out {
   }
 }
 
-trait OutFactory {
-  def name: String
-  def newOut(args: Map[String, String]): Out
-}
-
-class FileOutFactory extends OutFactory {
-  private[this] val fs = java.nio.file.FileSystems.getDefault
-  val defaultPath = fs.getPath(sys.props("user.home"), ".scalanb", "hist")
-
-  override val name = "file"
-  override def newOut(args: Map[String, String]): Out = {
-    val path = args.get("path").map(Paths.get(_)) getOrElse defaultPath
-    new FileOut(path)
-  }
-}
-
-class FileOut(val path: Path) extends Out {
-  val fs = new LocalFileSystem(path.toString)
-
+class FSOut(val fs: FileSystem) extends Out {
   override def prepare(): Unit = {
     val _ = fs.prepare()
   }
