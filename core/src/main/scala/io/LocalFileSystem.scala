@@ -8,12 +8,9 @@ import java.util.stream.Collectors
 import scala.collection.JavaConverters._
 
 class LocalFileSystemFactory extends FileSystemFactory {
-  private[this] val fs = java.nio.file.FileSystems.getDefault
-  private[this] val defaultPath = fs.getPath(sys.props("user.home"), ".scalanb", "hist")
-
+  override val homePath = sys.props("user.home")
   override val name = "file"
-  override def newFS(args: Map[String, String]) = {
-    val path = args.get("path") getOrElse defaultPath.toString
+  override def newFS(path: String) = {
     new LocalFileSystem(path)
   }
 }

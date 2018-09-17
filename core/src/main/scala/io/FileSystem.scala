@@ -49,19 +49,21 @@ trait FileSystem {
 }
 
 object FileSystem {
-  def newFS(fsName: String, args: Map[String, String]): FileSystem = {
+  def getFactory(fsName: String): FileSystemFactory = {
     val loader = java.util.ServiceLoader.load(classOf[FileSystemFactory])
     loader.iterator.asScala
       .toSeq
       .filter(_.name == fsName)
       .headOption
       .getOrElse { throw new RuntimeException(s"Unknown filesystem: $fsName") }
-      .newFS(args)
   }
+  def newFS(fsName: String, path: String): FileSystem =
+    getFactory(fsName).newFS(path)
 }
 
 trait FileSystemFactory {
   val name: String
-  def newFS(args: Map[String, String]): FileSystem
+  def homePath: String
+  def newFS(basePath: String): FileSystem
 }
 

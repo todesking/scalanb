@@ -32,6 +32,9 @@ object Runner {
 
   case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean)
 
+  def defaultHistPathFor(fsName: String): String =
+    s"${FileSystem.getFactory("file").homePath}/.scalanb/hist"
+
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
       val a = args.dropWhile(_ != "--")
@@ -52,7 +55,8 @@ object Runner {
         val parsedOutArgs =
           if (outArgs == null) Map.empty[String, String]
           else outArgs.split(",").map { kv => kv.split("=") match { case Array(k, v) => (k, v) } }.toMap
-        outs = outs :+ new FSOut(FileSystem.newFS(outType, parsedOutArgs))
+        val path = parsedOutArgs.get("path") getOrElse defaultHistPathFor(outType)
+        outs = outs :+ new FSOut(FileSystem.newFS(outType, path))
       case "--log" =>
         useLog = true
       case `ipynbOnErrorPattern`(b) =>
@@ -67,7 +71,7 @@ object Runner {
         }
     }
     val theOut = outs match {
-      case Seq() => new FSOut(FileSystem.newFS("file", Map()))
+      case Seq() => new FSOut(FileSystem.newFS("file", defaultHistPathFor("file")))
       case Seq(o) => o
       case xs => new MultiOut(xs)
     }
