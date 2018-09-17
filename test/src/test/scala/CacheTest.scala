@@ -1,11 +1,10 @@
 package test
 
-import com.todesking.scalanb.cache.{ IO, DepID, Checkpoint }
+import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Cacheable }
 
 class CacheTest extends org.scalatest.FunSpec {
-  class MemoryIO extends IO {
+  class MemoryFS extends CacheFS(null) {
     var cache = scala.collection.mutable.Map.empty[DepID, Array[Byte]]
-    override def protocol = ???
     override def path(id: DepID) = ???
     override def write(id: DepID, data: Array[Byte]) = {
       cache(id) = data
@@ -15,8 +14,8 @@ class CacheTest extends org.scalatest.FunSpec {
   }
 
   class Fixture {
-    val io = new MemoryIO
-    val cp = new Checkpoint(io)
+    val fs = new MemoryFS
+    val cp = new Checkpoint(fs)
   }
 
   describe("Caching Int value") {
@@ -31,6 +30,10 @@ class CacheTest extends org.scalatest.FunSpec {
             count += 1
             x + y
         }
+        assert(!fs.cache.contains(x.id))
+        assert(fs.cache.contains(z.id))
+        assert(fs.cache.contains(w.id))
+
         w.unwrapUNSAFE
       }
       assert(count == 0)

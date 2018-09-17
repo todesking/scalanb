@@ -30,11 +30,24 @@ trait FileSystem {
   private[this] def withResource[A <: AutoCloseable, B](resource: A)(f: A => B): B =
     try { f(resource) } finally { resource.close() }
 
-  def write(path: String, content: String): Unit = withResource(newWriter(path)) { w =>
+  def writeString(path: String, content: String): Unit = withResource(newWriter(path)) { w =>
     w.write(content)
   }
   def readString(path: String) = withResource(newReader(path)) { r =>
     r.lines().collect(Collectors.toList()).asScala.mkString("\n")
+  }
+  def writeBytes(path: String, content: Array[Byte]): Unit = withResource(newOutputStream(path)) { os =>
+    os.write(content)
+  }
+  def readBytes(path: String): Array[Byte] = withResource(newInputStream(path)) { is =>
+    val out = new java.io.ByteArrayOutputStream()
+    val buf = new Array[Byte](1024)
+    var nread = 0
+    while ({ nread = is.read(buf, 0, buf.length); nread } != -1) {
+      out.write(buf, 0, nread)
+    }
+    out.close()
+    out.toByteArray()
   }
 }
 

@@ -4,15 +4,15 @@ import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
 
-class Checkpoint(val io: IO) {
+class Checkpoint(val fs: CacheFS) {
   def nocache[R](f: R): Dep[R] = macro Checkpoint.NoCacheImpl.apply[R]
   def cache0[R: Cacheable](f: R): Dep[R] = macro Checkpoint.CacheImpl.apply0[R]
   def cache[A, R: Cacheable](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.CacheImpl.apply1[A, R]
 
   def cacheImpl[A](c: Cacheable[A], id: DepID, value: => A): Dep[A] = {
-    c.load(io, id) getOrElse {
+    c.load(fs, id) getOrElse {
       val dep = Dep.buildUNSAFE(id, value)
-      c.save(io, dep)
+      c.save(fs, dep)
       dep
     }
   }

@@ -1,5 +1,7 @@
 package com.todesking.scalanb.cache
 
+import scala.language.implicitConversions
+
 class Dep[A] private (val id: DepID, val unwrapUNSAFE: A) {
 }
 

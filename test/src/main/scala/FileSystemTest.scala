@@ -15,8 +15,8 @@ trait FileSystemBasicTest extends org.scalatest.FunSpec {
   describe("FileSystem") {
     it("should access to target FS")(withFS { fs =>
       assert(fs.list("").isEmpty)
-      fs.write("foo", "this is foo")
-      fs.write("bar/1", "this is bar/1")
+      fs.writeString("foo", "this is foo")
+      fs.writeString("bar/1", "this is bar/1")
       assert(fs.exists("foo"))
       assert(fs.exists("bar/1"))
       assert(fs.list("").sorted == Seq("bar", "foo"))
