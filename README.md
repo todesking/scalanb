@@ -99,3 +99,60 @@ $ sbt 'runMain MyNotebook --log'
 [2018-08-21 21:46:48] > println(s"a = $a")
 [2018-08-21 21:46:48] stdout: a = 1
 ```
+
+### Caching
+
+```scala
+import com.todesking.{scalanb => nb}
+@nb.Notebook
+class BigData {
+  val cp = nb.checkpoint
+
+  val rawLog = cp.nocache { loadData("data/raw.csv") }
+  val count = cp.cache(rawLog) { rawLog => rawLog.count() }
+  cp.unwrap(count) { count =>
+    println(s"count = $count")
+  }
+
+  val userId = 10
+  val theUsersLogs = cp.cache((rawLog, userId)) { case (rawLog, userId) =>
+    rawLog.where('user_id === userId)
+  }
+
+  cp.unwrap(theUsersLogs) { theUsersLogs =>
+    theUsersLogs.count()
+    theUsersLogs.show()
+  }
+}
+```
+
+Cache is based on value's ID.
+ID calculated from
+* val name
+* AST
+* Dependent values
+* Runtime value(if supported)
+
+```scala
+// ID: rawLog-{ loadData("data/raw.csv") }
+val rawLog = cp.nocache { loadData("data/raw.csv") }
+
+// ID: count-{ rawLog => rawLog.count() }(rawLog-{ loadData("data/raw.csv") })
+val count = cp.cache(rawLog) { rawLog => rawLog.count() }
+
+// Primitive values could be dependent value.
+// ID: lit:10
+val userId = 10
+
+// ID: theUsersLogs-{ case (rawLog, userId) => rawLog.where('user_id === userId) }((rawLog-{ loadData("data/raw.csv") }, lit:10))
+val theUsersLogs = cp.cache((rawLog, userId)) { case (rawLog, userId) =>
+  rawLog.where('user_id === userId)
+}
+```
+
+Cache location could specified by `--cache` option. Default is `~/.scalanb/cache/`
+
+```
+--cache=file:path=/path/to/cache
+--cache=hdfs:path=/path/to/cache # requires scalanb-spark
+```
