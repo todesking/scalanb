@@ -5,7 +5,8 @@ import com.todesking.scalanb.io.FileSystem
 class CacheFS(val underlying: FileSystem, nbID: String) {
   def protocol: String = underlying.protocol
 
-  def path(id: DepID): String = CacheFS.pathString(nbID, id)
+  def path(id: DepID): String =
+    s"${underlying.basePath}/${CacheFS.pathString(nbID, id)}"
 
   def write(id: DepID, data: Array[Byte]): Unit =
     underlying.writeBytes(path(id), data)

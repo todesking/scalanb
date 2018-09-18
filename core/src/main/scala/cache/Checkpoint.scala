@@ -9,6 +9,8 @@ class Checkpoint(val fs: CacheFS) {
   def cache0[R: Cacheable](f: R): Dep[R] = macro Checkpoint.CacheImpl.apply0[R]
   def cache[A, R: Cacheable](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.CacheImpl.apply1[A, R]
 
+  def unwrap[A](args: DepArg[A])(f: A => Unit): Unit = f(args.value)
+
   def cacheImpl[A](c: Cacheable[A], id: DepID, value: => A): Dep[A] = {
     c.load(fs, id) getOrElse {
       val dep = Dep.buildUNSAFE(id, value)
