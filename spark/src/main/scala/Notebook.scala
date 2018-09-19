@@ -26,10 +26,10 @@ object Notebook {
         q"val scalanb__implicits = new _root_.com.todesking.scalanb.spark.AllImplicits(spark)",
         q"import scalanb__implicits._")
 
-    override def makeMain(tpname: TypeName, notebookName: String): Tree = {
+    override def makeMain(tpname: TypeName, nbName: String, nbClassName: Tree): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $notebookName, this.scalanb__source) { (ctx, spark) =>
+        _root_.com.todesking.scalanb.spark.Runner.runBatch(args, $nbName, $nbClassName, this.scalanb__source) { (ctx, spark) =>
           new $tpname()(ctx, spark)
         }
       }

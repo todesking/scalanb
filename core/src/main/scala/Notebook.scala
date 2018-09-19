@@ -16,10 +16,10 @@ object Notebook {
     import context.universe.Tree
     import context.universe.Quasiquote
 
-    def makeMain(tpname: TypeName, notebookName: String): Tree = {
+    def makeMain(tpname: TypeName, nbName: String, nbClassName: Tree): Tree = {
       q"""
       def main(args: Array[String]): Unit = {
-        _root_.com.todesking.scalanb.Runner.runBatch(args, $notebookName, this.scalanb__source) { ctx => new $tpname()(ctx) }
+        _root_.com.todesking.scalanb.Runner.runBatch(args, $nbName, $nbClassName, this.scalanb__source) { ctx => new $tpname()(ctx) }
       }
       """
     }
@@ -42,8 +42,9 @@ object Notebook {
     }
 
     def transform(tpname: TypeName, stats: Seq[Tree], ostats: Seq[Tree], src: String): Expr[Any] = {
-      val notebookName = tpname.toString
-      val mainMethod = makeMain(tpname, notebookName)
+      val nbName = tpname.toString
+      val nbClassName = q"_root_.scala.Predef.classOf[$tpname].getName"
+      val mainMethod = makeMain(tpname, nbName, nbClassName)
       Expr[Any](q"""
             class $tpname(implicit ..$args) {
               ..$prelude

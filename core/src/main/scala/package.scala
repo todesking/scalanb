@@ -5,8 +5,8 @@ import scala.language.experimental.macros
 
 package object scalanb {
   def markdown(src: String)(implicit ctx: NBContext): Unit = {
-    ctx.event.quiet() // Cancel current execution log
-    ctx.event.markdown(src)
+    ctx.event.send(Event.Quiet()) // Cancel current execution log
+    ctx.event.send(Event.Markdown(src))
   }
 
   def setShowTimeMillis(l: Long)(implicit ctx: NBContext): Unit =
@@ -19,7 +19,7 @@ package object scalanb {
     Table.vtable(colNames, rows)
 
   def display[A](value: A)(implicit ctx: NBContext, format: Format[A]): Unit =
-    ctx.event.display(format(value))
+    ctx.event.send(Event.Display(format(value)))
 
   def inspect[A](body: A): A = macro Inspect.apply[A]
 

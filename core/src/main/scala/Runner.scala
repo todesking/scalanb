@@ -8,10 +8,10 @@ import com.todesking.scalanb.cache.CacheFS
 object Runner {
   def run[A](ctx: NBContext)(f: NBContext => A): A = {
     val tappedOut = TappedPrintStream(System.out) { str =>
-      ctx.event.stdout(str)
+      ctx.event.send(Event.StdOut(str))
     }
     val tappedErr = TappedPrintStream(System.out) { str =>
-      ctx.event.stderr(str)
+      ctx.event.send(Event.StdErr(str))
     }
 
     IO.withOuts(tappedOut, tappedErr) {
@@ -19,7 +19,7 @@ object Runner {
         f(ctx)
       } catch {
         case e: Throwable =>
-          ctx.event.error(e)
+          ctx.event.send(Event.Error(e, ctx.state.config.errorFormat))
           // TODO: Write incomplete notebook
           throw e
       }
@@ -92,7 +92,7 @@ object Runner {
     (Args(theOut, useLog, ipynbOnError, saveSource, fsForCache), rest)
   }
 
-  def runBatch(args: Array[String], notebookName: String, src: String)(invoke: NBContext => Unit): Unit = {
+  def runBatch(args: Array[String], notebookName: String, notebookClassName: String, src: String)(invoke: NBContext => Unit): Unit = {
     val start = System.currentTimeMillis()
 
     val (parsedArgs, _) = parseArgs(args)
@@ -109,12 +109,12 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
     val cacheFS = new CacheFS(parsedArgs.fsForCache, notebookName)
-    val ctx = new NBContext(notebookName, listeners, cacheFS)
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, cacheFS)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
-      ctx.event.markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```")
-      out.notebook(logName, ipynbListener.build())
+      ctx.event.send(Event.Markdown(s"```\nTotal execution time: ${format.Time.fromMillis(duration)}\n```"))
+      out.notebook(logName, ipynbListener.build(ctx.state))
     }
 
     if (parsedArgs.saveSource)

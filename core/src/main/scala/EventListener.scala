@@ -6,37 +6,7 @@ import com.todesking.scalanb.ipynb.Output
 import play.api.libs.json
 
 trait EventListener {
-  private[this] var _config: NBConfig = _
-  def config = _config
-  def setConfigInternal(c: NBConfig): Unit = {
-    _config = c
-  }
-
-  def wholeSource(src: String): Unit = {}
-
-  def code(src: String): Unit
-
-  def markdown(src: String): Unit
-
-  def quiet(): Unit
-
-  final def expr(value: Unit): Unit = {}
-  final def expr(value: Nothing): Nothing = throw new AssertionError
-
-  def expr[A: Format](value: A): A = {
-    expr(implicitly[Format[A]].apply(value))
-    value
-  }
-
-  def expr(value: Value): Value
-
-  def error(t: Throwable)(implicit format: ErrorFormat): Unit
-
-  def stdout(s: String): Unit
-  def stderr(s: String): Unit
-  def display(v: Value): Unit
-
-  def finish(): Unit = {}
+  def event(state: NBState, e: Event): Unit
 }
 
 object EventListener {
@@ -74,50 +44,40 @@ object EventListener {
       this.cells = this.cells :+ c
     }
 
-    override def expr(value: Value) = {
-      flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)))
-      value
-    }
-
-    override def error(t: Throwable)(implicit format: ErrorFormat) =
-      flush(Some(format.apply(t)))
-
-    override def quiet() = {
-      this.currentExecLog = None
-    }
-
-    override def markdown(src: String): Unit = {
-      flush(None)
-      addCell(Cell.Markdown(src))
-    }
-
-    override def code(s: String) = {
-      currentExecLog.foreach { el =>
-        val duration = System.currentTimeMillis() - el.startAt
-        if (duration > config.showTimeMillis) {
-          // First, flush previous exec logs
-          this.currentExecLog = None
-          flush(None)
-          // Then flush current one
-          this.currentExecLog = Some(el)
-          flush(None)
-        } else {
-          this.execLogs = this.execLogs :+ el
+    override def event(state: NBState, e: Event) = e match {
+      case Event.WholeCode(src) =>
+      case Event.Expr(value) =>
+        flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)), state)
+      case Event.Error(t, format) =>
+        flush(Some(format.apply(t)), state)
+      case Event.Quiet() =>
+        this.currentExecLog = None
+      case Event.Markdown(src) =>
+        flush(None, state)
+        addCell(Cell.Markdown(src))
+      case Event.Code(s) =>
+        currentExecLog.foreach { el =>
+          val duration = System.currentTimeMillis() - el.startAt
+          if (duration > state.config.showTimeMillis) {
+            // First, flush previous exec logs
+            this.currentExecLog = None
+            flush(None, state)
+            // Then flush current one
+            this.currentExecLog = Some(el)
+            flush(None, state)
+          } else {
+            this.execLogs = this.execLogs :+ el
+          }
         }
-      }
-      this.currentExecLog = Some(ExecLog(s, System.currentTimeMillis()))
-    }
-
-    override def stdout(s: String) = {
-      this.currentExecLog = currentExecLog.map(_.content(Content.StdOut(s)))
-    }
-
-    override def stderr(s: String) = {
-      this.currentExecLog = currentExecLog.map(_.content(Content.StdErr(s)))
-    }
-
-    override def display(v: Value) = {
-      this.currentExecLog = currentExecLog.map(_.content(Content.Display(v)))
+        this.currentExecLog = Some(ExecLog(s, System.currentTimeMillis()))
+      case Event.StdOut(s) =>
+        this.currentExecLog = currentExecLog.map(_.content(Content.StdOut(s)))
+      case Event.StdErr(s) =>
+        this.currentExecLog = currentExecLog.map(_.content(Content.StdErr(s)))
+      case Event.Display(v) =>
+        this.currentExecLog = currentExecLog.map(_.content(Content.Display(v)))
+      case Event.Finish() =>
+        flush(None, state)
     }
 
     private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
@@ -165,12 +125,12 @@ object EventListener {
       }
     }
 
-    def flush(res: Option[Output]) = {
+    def flush(res: Option[Output], state: NBState) = {
       flushCell(execLogs, Seq())
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis - el.startAt
         val outs =
-          if (duration > config.showTimeMillis)
+          if (duration > state.config.showTimeMillis)
             Seq(ipynb.Output.DisplayData(
               makeExecutionTime(duration).data, Map())) ++ res
           else
@@ -181,16 +141,14 @@ object EventListener {
       this.execLogs = Seq()
     }
 
-    def build() = {
-      flush(None)
+    def build(state: NBState) = {
+      flush(None, state)
       ipynb.Notebook(
         metadata = Map("language_info" -> json.JsObject(Map("name" -> json.JsString("scala")))),
         nbformat = 4,
         nbformatMinor = 0,
         cells)
     }
-
-    override def finish() = flush(None)
   }
 
   class Log(writer: java.io.PrintWriter) extends EventListener {
@@ -212,80 +170,36 @@ object EventListener {
       write(
         content.split("\n").map(prefix + _))
 
-    private[this] def flush() = {
+    private[this] def flush(state: NBState) = {
       startAt.map(System.currentTimeMillis() - _)
-        .filter(_ >= config.showTimeMillis)
+        .filter(_ >= state.config.showTimeMillis)
         .foreach { duration =>
           write(makeExecutionTime(duration).text, "")
         }
       startAt = None
     }
 
-    override def code(src: String): Unit = {
-      flush()
-      newLine()
-      startAt = Some(System.currentTimeMillis())
-      write(src, "> ")
+    override def event(state: NBState, e: Event) = e match {
+      case Event.WholeCode(s) =>
+      case Event.Code(src) =>
+        flush(state)
+        newLine()
+        startAt = Some(System.currentTimeMillis())
+        write(src, "> ")
+      case Event.Markdown(s) =>
+      case Event.Expr(value) =>
+        val s = value.text
+        write(s, "=> ")
+        flush(state)
+      case Event.Error(t, format) =>
+        write(t.toString, "ERR: ")
+        write(t.getStackTrace.map("ERR:   " + _.toString))
+        flush(state)
+      case Event.StdOut(s) => write(s, "stdout: ")
+      case Event.StdErr(s) => write(s, "stderr: ")
+      case Event.Display(v) => write(v.text, "display: ")
+      case Event.Quiet() =>
+      case Event.Finish() => flush(state)
     }
-
-    override def markdown(src: String): Unit = {}
-
-    override def quiet(): Unit = {}
-
-    override def expr[A: Format](value: A): A = {
-      expr(implicitly[Format[A]].apply(value))
-      value
-    }
-
-    override def expr(value: Value): Value = {
-      val s = value.text
-      write(s, "=> ")
-      flush()
-      value
-    }
-
-    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = {
-      write(t.toString, "ERR: ")
-      write(t.getStackTrace.map("ERR:   " + _.toString))
-      flush()
-    }
-
-    override def stdout(s: String): Unit = write(s, "stdout: ")
-    override def stderr(s: String): Unit = write(s, "stderr: ")
-    override def display(v: Value): Unit = write(v.text, "display: ")
-
-    override def finish() = flush()
   }
-
-  class Multiplex(children: Seq[EventListener]) extends EventListener {
-    private[this] def exec[A](f: EventListener => A) =
-      children.foreach(f)
-
-    override def setConfigInternal(c: NBConfig) = {
-      super.setConfigInternal(c)
-      exec(_.setConfigInternal(c))
-    }
-
-    override def wholeSource(src: String) = exec(_.wholeSource(src))
-
-    override def code(src: String): Unit = exec(_.code(src))
-
-    override def markdown(src: String): Unit = exec(_.markdown(src))
-
-    override def quiet(): Unit = exec(_.quiet())
-
-    override def expr[A: Format](value: A): A = { exec(_.expr(value)); value }
-    override def expr(value: Value): Value = { exec(_.expr(value)); value }
-
-    override def error(t: Throwable)(implicit format: ErrorFormat): Unit = exec(_.error(t))
-
-    override def stdout(s: String): Unit = exec(_.stdout(s))
-    override def stderr(s: String): Unit = exec(_.stderr(s))
-    override def display(v: Value): Unit = exec(_.display(v))
-
-    override def finish() = exec(_.finish())
-  }
-
-  val Null = new Multiplex(Seq())
-
 }
