@@ -17,7 +17,7 @@ class Example1 {
 
   val aa, bb, cc = 1; aa
 
-  val myModule = new Module(param1 = 10)
+  val myModule = Module.load(param1 = 10)
   import myModule._
 
   moduleValue

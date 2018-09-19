@@ -4,9 +4,9 @@ case class NBState(
   val config: NBConfig,
   val name: String,
   val className: String,
-  val moduleNameStack: Seq[String])
+  val namePath: Seq[String])
 
-class NBContext(name: String, className: String, listeners: Seq[EventListener], cacheFS: cache.CacheFS) {
+class NBContext(name: String, className: String, listeners: Seq[EventListener], fsForCache: io.FileSystem) {
   private[this] var _state: NBState = NBState(
     NBConfig.default,
     name,
@@ -20,12 +20,26 @@ class NBContext(name: String, className: String, listeners: Seq[EventListener], 
   }
 
   lazy val checkpoint = {
-    cacheFS.underlying.prepare()
-    new cache.Checkpoint(cacheFS)
+    fsForCache.prepare()
+    val cfs = new cache.CacheFS(fsForCache, className)
+    new cache.Checkpoint(cfs)
   }
 
   def setShowTimeMillis(l: Long): Unit = {
     setConfig(config.copy(showTimeMillis = l))
+  }
+
+  def loadModule[A](name: String, className: String)(f: NBContext => A): A = {
+    val oldState = state
+    try {
+      _state = state.copy(
+        name = name,
+        className = className,
+        namePath = state.namePath :+ state.name)
+      f(this)
+    } finally {
+      _state = oldState
+    }
   }
 
   object event {
@@ -46,6 +60,5 @@ class NBContext(name: String, className: String, listeners: Seq[EventListener], 
 
     def code(s: String) = send(Event.Code(s))
     def markdown(s: String) = send(Event.Markdown(s))
-
   }
 }

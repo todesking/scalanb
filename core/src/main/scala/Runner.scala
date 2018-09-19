@@ -3,7 +3,6 @@ package com.todesking.scalanb
 import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
-import com.todesking.scalanb.cache.CacheFS
 
 object Runner {
   def run[A](ctx: NBContext)(f: NBContext => A): A = {
@@ -108,8 +107,7 @@ object Runner {
     val listeners = logWriter.fold[Seq[EventListener]](Seq(ipynbListener)) { w =>
       Seq(ipynbListener, new EventListener.Log(w))
     }
-    val cacheFS = new CacheFS(parsedArgs.fsForCache, notebookName)
-    val ctx = new NBContext(notebookName, notebookClassName, listeners, cacheFS)
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, parsedArgs.fsForCache)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
