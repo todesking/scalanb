@@ -3,7 +3,6 @@ import com.todesking.{ scalanb => nb }
 @nb.spark.Notebook
 class SparkNB {
   nb.markdown("# Spark test")
-  import spark.implicits._
 
   val df = spark.createDataset(Seq(0.0, 0.00001, 0.002, 0.03, 100)).toDF("v")
   df

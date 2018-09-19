@@ -22,8 +22,7 @@ object Notebook {
     override def prelude =
       super.prelude ++ Seq(
         q"import spark.implicits._",
-        q"val scalanb__implicits = new _root_.com.todesking.scalanb.spark.AllImplicits(spark)",
-        q"import scalanb__implicits._")
+        q"import _root_.com.todesking.scalanb.spark.AllImplicits._")
 
     override def makeMain(tpname: TypeName, nbName: String, nbClassName: Tree): Tree = {
       q"""

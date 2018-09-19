@@ -25,6 +25,10 @@ val commonSettings = versionSetting ++ Seq(
   scalacOptions in (Test, console) := { (scalacOptions in (Compile, console)).value }
 )
 
+val testSettings = commonSettings ++ Seq(
+  scalacOptions -= "-Ywarn-value-discard"
+)
+
 val coreCross = Seq(
   scalaVersion := Scala2_11,
   crossScalaVersions := Seq(Scala2_11, Scala2_12)
@@ -34,7 +38,7 @@ lazy val core = project
   .settings(coreCross)
 lazy val test = project
   .dependsOn(core)
-  .settings(commonSettings)
+  .settings(testSettings)
   .settings(coreCross)
 lazy val example = project
   .dependsOn(core)
@@ -52,5 +56,5 @@ lazy val spark = project
 lazy val sparkTest = project.in(file("spark-test"))
   .dependsOn(spark)
   .dependsOn(test)
-  .settings(commonSettings)
+  .settings(testSettings)
   .settings(sparkCross)

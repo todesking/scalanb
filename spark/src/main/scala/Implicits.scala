@@ -1,7 +1,6 @@
 package com.todesking.scalanb.spark
 
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types
 
 import com.todesking.scalanb.Value
@@ -18,7 +17,7 @@ trait Implicits {
   }
 }
 
-class AllImplicits(protected override val spark: SparkSession) extends Implicits with cache.Implicits
+object AllImplicits extends Implicits with cache.Implicits
 
 object ImplicitsUtil {
   class NBOps[A](self: Dataset[A]) {

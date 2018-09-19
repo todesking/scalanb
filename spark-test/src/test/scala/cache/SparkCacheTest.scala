@@ -24,14 +24,13 @@ class SparkCacheTest extends org.scalatest.FunSpec {
   }
 
   it("should cache DataFrame")(withTmpDir { tmp =>
-    withSpark { spark =>
+    withSpark { implicit spark =>
       val fs = new LocalFileSystem(tmp.toString)
       val cfs = new CacheFS(fs, "test")
       val cp = new Checkpoint(cfs)
 
       import spark.implicits._
-      val implicits = new com.todesking.scalanb.spark.AllImplicits(spark)
-      import implicits._
+      import com.todesking.scalanb.spark.AllImplicits._
 
       var count = 0
       def exec() = {
