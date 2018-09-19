@@ -4,17 +4,20 @@ import com.todesking.{ scalanb => nb }
 class Module(param1: Int) {
   val moduleValue = param1 * 100
   val m2 = Module2.load(moduleValue)
+  nb.checkpoint.fs.className
 }
 
 @nb.Module
 class Module2(param: Int) {
   val x = param + 1
+  nb.checkpoint.fs.className
 }
 
 @nb.Notebook
 class Example1 {
   nb.setShowTimeMillis(100)
   val cp = nb.checkpoint
+  cp.fs.className
 
   nb.markdown("# Scalanb Example")
 

@@ -6,11 +6,11 @@ case class NBState(
   val className: String,
   val namePath: Seq[String])
 
-class NBContext(name: String, className: String, listeners: Seq[EventListener], fsForCache: io.FileSystem) {
+class NBContext(_name: String, _className: String, listeners: Seq[EventListener], fsForCache: io.FileSystem) {
   private[this] var _state: NBState = NBState(
     NBConfig.default,
-    name,
-    className,
+    _name,
+    _className,
     Seq())
   def state = _state
 
@@ -19,9 +19,9 @@ class NBContext(name: String, className: String, listeners: Seq[EventListener], 
     _state = _state.copy(config = c)
   }
 
-  lazy val checkpoint = {
+  def checkpoint() = {
     fsForCache.prepare()
-    val cfs = new cache.CacheFS(fsForCache, className)
+    val cfs = new cache.CacheFS(fsForCache, state.className)
     new cache.Checkpoint(cfs)
   }
 

@@ -2,7 +2,7 @@ package com.todesking.scalanb.cache
 
 import com.todesking.scalanb.io.FileSystem
 
-class CacheFS(val underlying: FileSystem, className: String) {
+class CacheFS(val underlying: FileSystem, val className: String) {
   def protocol: String = underlying.protocol
 
   def path(id: DepID): String =
