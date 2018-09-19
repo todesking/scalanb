@@ -2,7 +2,6 @@ package com.todesking.scalanb.spark
 
 import com.todesking.scalanb
 import scalanb.NBContext
-import scalanb.Format
 
 import org.apache.spark.sql.SparkSession
 

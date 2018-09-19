@@ -12,7 +12,6 @@ class Notebook extends StaticAnnotation {
 }
 object Notebook {
   class MacroImpl[A <: Context](c: A) extends scalanb.Notebook.MacroImpl[A](c) {
-    import context.Expr
     import context.TypeName
     import context.universe.Tree
     import context.universe.Quasiquote

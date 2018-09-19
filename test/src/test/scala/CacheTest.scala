@@ -1,6 +1,6 @@
 package test
 
-import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Cacheable }
+import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint }
 
 class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
