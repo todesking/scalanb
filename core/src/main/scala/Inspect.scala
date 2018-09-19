@@ -50,7 +50,7 @@ object Inspect {
 
   private[this] def sourceLit(c: Context)(t: c.Tree): c.Tree = {
     import c.universe._
-    Literal(Constant(source(c)(t)))
+    q"_root_.scala.StringContext.apply(${Literal(Constant(source(c)(t)))}).s()"
   }
 
   private[this] def rangeUnion(l: (Int, Int), r: (Int, Int)) = (math.min(l._1, r._1), math.max(l._2, r._2))
