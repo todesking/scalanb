@@ -15,6 +15,7 @@ class Module2(param: Int) {
 
 @nb.Notebook
 class Example1 {
+
   nb.setShowTimeMillis(100)
   val cp = nb.checkpoint
   cp.fs.className
@@ -34,7 +35,7 @@ class Example1 {
   println(s"a = $a")
   println("hello")
 
-  nb.markdown("This is $a + b$:")
+  nb.markdown("This is $ a + b $:")
   a + b
 
   System.out.println("Hello from System.out.println")

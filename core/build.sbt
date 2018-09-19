@@ -10,21 +10,6 @@ dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-annotations" % "2
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 
-scalacOptions ++= Seq(
-  "-deprecation",
-  "-encoding", "UTF-8",
-  "-feature",
-  "-unchecked",
-  "-Xfuture",
-  "-Xlint",
-  "-Yno-adapted-args",
-  "-Ywarn-dead-code",
-  "-Ywarn-unused-import",
-  "-Ywarn-value-discard"
-)
-scalacOptions in (Compile, console) ~= {_.filterNot(_ == "-Ywarn-unused-import")}
-scalacOptions in (Test, console) := { (scalacOptions in (Compile, console)).value }
-
 // For REPL classpath problem
 fork in run := true
 connectInput := true

@@ -8,20 +8,37 @@ val versionSetting = Seq(
   version := "0.0.1-SNAPSHOT"
 )
 
+val commonSettings = versionSetting ++ Seq(
+  scalacOptions ++= Seq(
+    "-deprecation",
+    "-encoding", "UTF-8",
+    "-feature",
+    "-unchecked",
+    "-Xfuture",
+    "-Xlint",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-unused-import",
+    "-Ywarn-value-discard"
+  ),
+  scalacOptions in (Compile, console) ~= {_.filterNot(_ == "-Ywarn-unused-import")},
+  scalacOptions in (Test, console) := { (scalacOptions in (Compile, console)).value }
+)
+
 val coreCross = Seq(
   scalaVersion := Scala2_11,
   crossScalaVersions := Seq(Scala2_11, Scala2_12)
 )
 lazy val core = project
-  .settings(versionSetting)
+  .settings(commonSettings)
   .settings(coreCross)
 lazy val test = project
   .dependsOn(core)
-  .settings(versionSetting)
+  .settings(commonSettings)
   .settings(coreCross)
 lazy val example = project
   .dependsOn(core)
-  .settings(versionSetting)
+  .settings(commonSettings)
   .settings(coreCross)
 
 val sparkCross = Seq(
@@ -30,10 +47,10 @@ val sparkCross = Seq(
 )
 lazy val spark = project
   .dependsOn(core)
-  .settings(versionSetting)
+  .settings(commonSettings)
   .settings(sparkCross)
 lazy val sparkTest = project.in(file("spark-test"))
   .dependsOn(spark)
   .dependsOn(test)
-  .settings(versionSetting)
+  .settings(commonSettings)
   .settings(sparkCross)

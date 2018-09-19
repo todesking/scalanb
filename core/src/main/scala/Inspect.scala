@@ -37,7 +37,7 @@ object Inspect {
     val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NBContext]"
     sources(c)(stats).flatMap {
       case (src, stat) =>
-        val srcStat = src.map { s => q"$ctx.event.code($s)" }
+        val srcStat = src.map { s => q"$ctx.event.code(${stringLiteral(c)(s)})" }
         val modStat = stat match {
           case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
             st
@@ -48,9 +48,9 @@ object Inspect {
     }
   }
 
-  private[this] def sourceLit(c: Context)(t: c.Tree): c.Tree = {
+  private[this] def stringLiteral(c: Context)(s: String): c.Tree = {
     import c.universe._
-    q"_root_.scala.StringContext.apply(${Literal(Constant(source(c)(t)))}).s()"
+    q"""${Literal(Constant(s.replaceAll("\\$", "\\$-")))}.replaceAll("\\$$-", "\\$$")"""
   }
 
   private[this] def rangeUnion(l: (Int, Int), r: (Int, Int)) = (math.min(l._1, r._1), math.max(l._2, r._2))
