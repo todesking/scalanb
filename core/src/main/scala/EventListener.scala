@@ -69,7 +69,10 @@ object EventListener {
             this.execLogs = this.execLogs :+ el
           }
         }
-        this.currentExecLog = Some(ExecLog(s, System.currentTimeMillis()))
+        val src =
+          if (state.namePath.isEmpty) s
+          else s"// In ${(state.namePath.tail :+ state.name).mkString(" -> ")}\n" + s
+        this.currentExecLog = Some(ExecLog(src, System.currentTimeMillis()))
       case Event.StdOut(s) =>
         this.currentExecLog = currentExecLog.map(_.content(Content.StdOut(s)))
       case Event.StdErr(s) =>
@@ -78,6 +81,8 @@ object EventListener {
         this.currentExecLog = currentExecLog.map(_.content(Content.Display(v)))
       case Event.Finish() =>
         flush(None, state)
+      case Event.EnterModule() =>
+      case Event.ExitModule(_, _) =>
     }
 
     private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
@@ -200,6 +205,10 @@ object EventListener {
       case Event.Display(v) => write(v.text, "display: ")
       case Event.Quiet() =>
       case Event.Finish() => flush(state)
+      case Event.EnterModule() =>
+        write(s"Enter module: ${state.name}", "")
+      case Event.ExitModule(name, _) =>
+        write(s"Exit module: ${name}", "")
     }
   }
 }

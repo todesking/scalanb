@@ -12,4 +12,6 @@ object Event {
   case class StdErr(content: String) extends Event
   case class Display(value: Value) extends Event
   case class Finish() extends Event
+  case class EnterModule() extends Event
+  case class ExitModule(name: String, className: String) extends Event
 }

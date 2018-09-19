@@ -27,8 +27,6 @@ object Module {
 
     def transform(tpname: TypeName, args: Seq[Seq[Tree]], stats: Seq[Tree], ostats: Seq[Tree]): Expr[Any] = {
       val className = q"_root_.scala.Predef.classOf[$tpname].getName()"
-      val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NBContext]"
-      val mctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.ModuleContext]"
       val moduleName = tpname.toString
       val argNames = args.map(_.map {
         case q"$mods val $name: $tpe = $expr" => name
@@ -38,9 +36,7 @@ object Module {
       })
       Expr[Any](q"""
         class $tpname private (...$args)(implicit scalanb__context: _root_.com.todesking.scalanb.NBContext)  {
-          $ctx.event.markdown("```\nEntering module: " + $moduleName + " \n```")
           ..${Inspect.transform(c)(stats)}
-          $ctx.event.markdown("```\nDone: " + $moduleName + " \n```")
         }
         object ${tpname.toTermName} {
           def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {

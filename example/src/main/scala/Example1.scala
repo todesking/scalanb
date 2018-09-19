@@ -3,6 +3,12 @@ import com.todesking.{ scalanb => nb }
 @nb.Module
 class Module(param1: Int) {
   val moduleValue = param1 * 100
+  val m2 = Module2.load(moduleValue)
+}
+
+@nb.Module
+class Module2(param: Int) {
+  val x = param + 1
 }
 
 @nb.Notebook

@@ -36,9 +36,11 @@ class NBContext(name: String, className: String, listeners: Seq[EventListener], 
         name = name,
         className = className,
         namePath = state.namePath :+ state.name)
+      event.send(Event.EnterModule())
       f(this)
     } finally {
       _state = oldState
+      event.send(Event.ExitModule(name, className))
     }
   }
 

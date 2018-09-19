@@ -75,6 +75,7 @@ object Inspect {
 
   // Read raw source code from tree(NOTE: *best effort*)
   def source(c: Context)(t: c.Tree): String = {
+    def clean(s: String) = s.replaceAll("""^\s+|\s+$""", "")
     def content(t: c.Tree): Array[Char] = {
       val c = t.pos.source.content
       if (c.nonEmpty) c
@@ -82,6 +83,6 @@ object Inspect {
     }
     val (start, end) = range(c)(t)
     if (start == Int.MaxValue) "<source unavailable>"
-    else content(t).slice(start, end + 1).mkString("")
+    else clean(content(t).slice(start, end + 1).mkString(""))
   }
 }
