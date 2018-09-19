@@ -36,7 +36,7 @@ object Module {
       })
       Expr[Any](q"""
         class $tpname private (...$args)(implicit scalanb__context: _root_.com.todesking.scalanb.NBContext)  {
-          ..${Inspect.transform(c)(stats)}
+          ..${Inspect.transform(c)(stats, true)}
         }
         object ${tpname.toTermName} {
           def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {

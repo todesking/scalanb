@@ -7,13 +7,13 @@ object Inspect {
     import c.universe._
     val impl = new MacroImpl[c.type](c)
     body.tree match {
-      case Block(stats, expr) => impl.transform(stats :+ expr)
-      case st => impl.transform(Seq(st))
+      case Block(stats, expr) => impl.transform(stats :+ expr, false)
+      case st => impl.transform(Seq(st), false)
     }
   }
 
-  def transform[A: c.WeakTypeTag](c: Context)(trees: Seq[c.Tree]): c.Expr[A] =
-    new MacroImpl[c.type](c).transform(trees)
+  def transform[A: c.WeakTypeTag](c: Context)(trees: Seq[c.Tree], discardAllValues: Boolean): c.Expr[A] =
+    new MacroImpl[c.type](c).transform(trees, discardAllValues)
 
   def wholeSource(c: Context)(trees: Seq[c.Tree]): String =
     new MacroImpl[c.type](c).wholeSource(trees)
@@ -27,8 +27,8 @@ object Inspect {
     import c.Tree
     import c.universe.Quasiquote
 
-    def transform[A: WeakTypeTag](trees: Seq[Tree]): Expr[A] = {
-      val newBody = processStats(trees)
+    def transform[A: WeakTypeTag](trees: Seq[Tree], discardAllValues: Boolean): Expr[A] = {
+      val newBody = processStats(trees, discardAllValues)
       Expr[A](q"{ ..$newBody }")
     }
 
@@ -47,17 +47,20 @@ object Inspect {
           (math.max(end, pos), trees :+ ((src, t)))
       }._2
 
-    private[this] def processStats(stats: Seq[Tree]): Seq[Tree] = {
+    private[this] def processStats(stats: Seq[Tree], discardAllValues: Boolean): Seq[Tree] = {
       import c.universe._
       val ctx = q"_root_.scala.Predef.implicitly[_root_.com.todesking.scalanb.NBContext]"
-      sources(stats).flatMap {
-        case (src, stat) =>
+      val srcs = sources(stats)
+      srcs.zipWithIndex.flatMap {
+        case ((src, stat), i) =>
           val srcStat = src.map { s => q"$ctx.event.code(${stringLiteral(s)})" }
           val modStat = stat match {
             case st if st.isDef || st.isType || !st.isTerm => // TODO: I don't know how to detect not-a-value trees
               st
-            case expr =>
+            case expr if !discardAllValues && i == srcs.size - 1 =>
               q"$ctx.event.expr($expr)"
+            case expr =>
+              q"$ctx.event.exprDiscard($expr)"
           }
           srcStat.toSeq :+ modStat
       }
@@ -65,7 +68,8 @@ object Inspect {
 
     private[this] def stringLiteral(s: String): Tree = {
       import c.universe._
-      q"""${Literal(Constant(s.replaceAll("\\$", "\\$-")))}.replaceAll("\\$$-", "\\$$")"""
+      if (!s.contains("$")) Literal(Constant(s))
+      else q"""${Literal(Constant(s.replaceAll("\\$", "\\$-")))}.replaceAll("\\$$-", "\\$$")"""
     }
 
     private[this] def rangeUnion(l: (Int, Int), r: (Int, Int)) = (math.min(l._1, r._1), math.max(l._2, r._2))

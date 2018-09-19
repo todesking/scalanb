@@ -52,12 +52,18 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
     final def expr(value: Nothing): Nothing = throw new AssertionError
 
     def expr[A: Format](value: A): A = {
-      expr(implicitly[Format[A]].apply(value))
+      exprDiscard[A](value)
       value
     }
     def expr(value: Value): Value = {
-      send(Event.Expr(value))
+      exprDiscard(value)
       value
+    }
+    def exprDiscard[A: Format](value: A): Unit = {
+      exprDiscard(implicitly[Format[A]].apply(value))
+    }
+    def exprDiscard(value: Value): Unit = {
+      send(Event.Expr(value))
     }
 
     def code(s: String) = send(Event.Code(s))

@@ -48,7 +48,7 @@ object Notebook {
       Expr[Any](q"""
             class $tpname(implicit ..$args) {
               ..$prelude
-              ..${Inspect.transform(context)(stats)}
+              ..${Inspect.transform(context)(stats, true)}
             }
             object ${tpname.toTermName} {
               $mainMethod
