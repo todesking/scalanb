@@ -11,4 +11,15 @@ object Dependable {
     apply(identity)
   implicit val ofInt: Dependable[Int, Int] =
     apply { i => Dep.fromInt(i) }
+  implicit def ofOption[A, B](implicit ev: Dependable[A, B]): Dependable[Option[A], Option[B]] =
+    apply {
+      case Some(a) =>
+        val d = implicitly[Dependable[A, B]].apply(a)
+        val id = DepID.Root(s"option:Some(${d.id.name})", s"Some(${d.id.name})", Seq(d.id))
+        Dep.buildUNSAFE(id, Some(d.unwrapUNSAFE))
+      case None =>
+        Dep.buildUNSAFE(
+          DepID.Root("option:None", "None", Seq()),
+          None)
+    }
 }

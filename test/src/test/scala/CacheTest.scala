@@ -1,6 +1,6 @@
 package test
 
-import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep, Cacheable, Decomposable }
+import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable }
 
 class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
@@ -142,6 +142,18 @@ class CacheTest extends org.scalatest.FunSpec {
       }
       assert(y.map(_ + 1).id == y.map(_ + 1).id)
     })
+  }
+  describe("Dependable") {
+    it("Int is dependable") {
+      val d = implicitly[Dependable[Int, Int]]
+      assert(d(1).id == DepID.Root("int:1", "1", Seq()))
+    }
+    it("Option[A] is dependable") {
+      val d = implicitly[Dependable[Option[Int], Option[Int]]]
+      val id1 = implicitly[Dependable[Int, Int]].apply(1).id
+      assert(d(Some(1)).id == DepID.Root("option:Some(int:1)", "Some(int:1)", Seq(id1)))
+      assert(d(None).id == DepID.Root("option:None", "None", Seq()))
+    }
   }
 }
 
