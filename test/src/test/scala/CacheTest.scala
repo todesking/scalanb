@@ -1,6 +1,6 @@
 package test
 
-import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint }
+import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep }
 
 class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
@@ -9,8 +9,9 @@ class CacheTest extends org.scalatest.FunSpec {
     override def write(id: DepID, data: Array[Byte]) = {
       cache(id) = data
     }
-    override def read(id: DepID) =
+    override def read(id: DepID) = {
       cache.get(id)
+    }
   }
 
   class Fixture {
@@ -40,6 +41,32 @@ class CacheTest extends org.scalatest.FunSpec {
       assert(exec() == 101)
       assert(count == 1)
       assert(exec() == 101)
+      assert(count == 1)
+    })
+  }
+  describe("Caching Tuple") {
+    it("should cache and decompose")(new Fixture {
+      var count = 0
+      def exec(): Dep[(Int, Int, Int)] = {
+        val (a, b) = cp.nocache { (1, 2) }.decompose
+
+        cp.unwrap((a, b)) {
+          case (a, b) =>
+            assert(a == 1)
+            assert(b == 2)
+        }
+
+        cp.cache((a, b)) {
+          case (a, b) =>
+            count += 1
+            (a + 1, b + 1, a + b)
+        }
+      }
+
+      assert(count == 0)
+      cp.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
+      assert(count == 1)
+      cp.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
       assert(count == 1)
     })
   }

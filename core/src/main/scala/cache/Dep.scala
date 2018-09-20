@@ -5,6 +5,7 @@ import com.todesking.scalanb.Format
 import scala.language.implicitConversions
 
 class Dep[A] private (val id: DepID, val unwrapUNSAFE: A) {
+  def decompose[B](implicit ev: Decomposable[A, B, _]): B = ev(this)
 }
 
 object Dep {
