@@ -1,7 +1,9 @@
 package com.todesking.scalanb
 
 import scala.annotation.StaticAnnotation
-import scala.reflect.macros.whitebox.Context
+import scala.reflect.macros.blackbox.Context
+
+import com.todesking.scalanb.util.MacroUtil
 
 import scala.language.experimental.macros
 
@@ -15,6 +17,8 @@ object Notebook {
     import context.TypeName
     import context.universe.Tree
     import context.universe.Quasiquote
+
+    val util = MacroUtil.bind[context.type](context)
 
     def makeMain(tpname: TypeName, nbName: String, nbClassName: Tree): Tree = {
       q"""
@@ -33,10 +37,10 @@ object Notebook {
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
         case Seq(cdef @ q"class $tpname { ..$stats }") =>
-          val src = stats.map(Inspect.source(context)(_)).mkString("\n")
+          val src = stats.map(util.source(_)).mkString("\n")
           transform(tpname, stats, Seq(), src)
         case Seq(cdef @ q"class $tpname { ..$stats }", q"object $oname { ..$ostats }") =>
-          val src = Inspect.wholeSource(context)(stats)
+          val src = util.wholeSource(stats)
           transform(tpname, stats, ostats, src)
       }
     }
