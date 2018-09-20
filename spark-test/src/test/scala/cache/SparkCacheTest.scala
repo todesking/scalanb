@@ -34,7 +34,7 @@ class SparkCacheTest extends org.scalatest.FunSpec {
 
       var count = 0
       def exec() = {
-        val df = cp.nocache {
+        val df = cp.source {
           spark.createDataset(Seq(1, 2, 3)).toDF("v")
         }
 

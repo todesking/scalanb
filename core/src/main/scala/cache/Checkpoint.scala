@@ -5,8 +5,8 @@ import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
 
 class Checkpoint(val fs: CacheFS) {
-  def nocache[R](f: R): Dep[R] = macro Checkpoint.NoCacheImpl.apply0[R]
-  def nocache[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.NoCacheImpl.apply1[A, R]
+  def source[R](f: R): Dep[R] = macro Checkpoint.NoCacheImpl.apply0[R]
+  def join[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.NoCacheImpl.apply1[A, R]
   def cache0[R: Cacheable](f: R): Dep[R] = macro Checkpoint.CacheImpl.apply0[R]
   def cache[A, R: Cacheable](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.CacheImpl.apply1[A, R]
 

@@ -22,7 +22,7 @@ class CacheTest extends org.scalatest.FunSpec {
     val cp = new Checkpoint(fs)
 
     def decompose[A, B](a: A)(implicit ev: Decomposable[A, B]): (DepID, B) = {
-      val x = cp.nocache { a }
+      val x = cp.source { a }
       (x.id, x.decompose)
     }
   }
@@ -45,7 +45,7 @@ class CacheTest extends org.scalatest.FunSpec {
     it("should save/restore data")(new Fixture {
       var count = 0
       def exec() = {
-        val x = cp.nocache { 1 }
+        val x = cp.source { 1 }
         val y = 100
         val z = cp.cache0 { 1 }
         val w = cp.cache((x, y)) {
@@ -70,7 +70,7 @@ class CacheTest extends org.scalatest.FunSpec {
     it("should decompose dep value")(new Fixture {
       var count = 0
       def exec(): Dep[(Int, Int, Int)] = {
-        val (a, b) = cp.nocache { (1, 2) }.decompose
+        val (a, b) = cp.source { (1, 2) }.decompose
 
         cp.unwrap((a, b)) {
           case (a, b) =>
@@ -131,7 +131,7 @@ class CacheTest extends org.scalatest.FunSpec {
   }
   describe("Dep") {
     it("should provide map and foreach")(new Fixture {
-      val x = cp.nocache { 10 }
+      val x = cp.source { 10 }
       val y = x.map(_ + 11)
       y.foreach { y =>
         assert(y == 21)
