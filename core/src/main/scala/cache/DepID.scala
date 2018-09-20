@@ -1,8 +1,28 @@
 package com.todesking.scalanb.cache
 
-case class DepID(name: String, src: String, deps: Seq[DepID]) {
-  override def toString = s"$name[$src] ${if (deps.nonEmpty) s"<- { ${deps.mkString(", ")} }" else ""}"
-  def stringForDigest: String = s"$name[$src] ${if (deps.nonEmpty) s"<- { ${deps.map(_.stringForDigest).mkString(", ")} }" else ""}"
-  def item(i: String): DepID =
-    DepID(s"$name.$i", s"$name.$i", Seq(this))
+sealed abstract class DepID {
+  def name: String
+  def deps: Seq[DepID]
+  def stringForDigest: String
+  def path: Seq[String]
+  def item(i: String): DepID.Item =
+    DepID.Item(this, i)
+  override def toString = stringForDigest
+}
+
+object DepID {
+  def apply(name: String, src: String, deps: Seq[DepID]): Root = Root(name, src, deps)
+
+  case class Root(override val name: String, src: String, override val deps: Seq[DepID]) extends DepID {
+    def stringForDigest: String =
+      s"$name[$src] ${if (deps.nonEmpty) s"<- { ${deps.map(_.stringForDigest).mkString(", ")} }" else ""}"
+    override def path = Seq(name)
+  }
+
+  case class Item(parent: DepID, index: String) extends DepID {
+    override def name = s"${parent.name}.$index"
+    override def deps = Seq(parent)
+    override def stringForDigest = s"(${parent.stringForDigest}).$index"
+    override def path = parent.path :+ index
+  }
 }

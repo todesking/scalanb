@@ -1,15 +1,18 @@
 package test
 
-import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep }
+import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep, Cacheable, Decomposable }
 
 class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
+    val dbg = false
     var cache = scala.collection.mutable.Map.empty[DepID, Array[Byte]]
     override def path(id: DepID) = ???
     override def write(id: DepID, data: Array[Byte]) = {
+      if (dbg) println(s"Write: $id")
       cache(id) = data
     }
     override def read(id: DepID) = {
+      if (dbg) println(s"Read: $id")
       cache.get(id)
     }
   }
@@ -17,9 +20,28 @@ class CacheTest extends org.scalatest.FunSpec {
   class Fixture {
     val fs = new MemoryFS
     val cp = new Checkpoint(fs)
+
+    def decompose[A, B](a: A)(implicit ev: Decomposable[A, B]): (DepID, B) = {
+      val x = cp.nocache { a }
+      (x.id, x.decompose)
+    }
   }
 
-  describe("Caching Int value") {
+  def assertCacheable[A: Cacheable](a: A): Unit = {
+    val cp = new Checkpoint(new MemoryFS)
+    def eq(a: A): Any = a match {
+      case x: Array[_] => x.toSeq
+      case x => x
+    }
+    def exec() = {
+      val x = cp.cache0 { a }
+      cp.unwrap(x) { x => assert(eq(x) == eq(a)) }
+    }
+    exec()
+    exec()
+  }
+
+  describe("Caching") {
     it("should save/restore data")(new Fixture {
       var count = 0
       def exec() = {
@@ -44,8 +66,8 @@ class CacheTest extends org.scalatest.FunSpec {
       assert(count == 1)
     })
   }
-  describe("Caching Tuple") {
-    it("should cache and decompose")(new Fixture {
+  describe("Decomposable") {
+    it("should decompose dep value")(new Fixture {
       var count = 0
       def exec(): Dep[(Int, Int, Int)] = {
         val (a, b) = cp.nocache { (1, 2) }.decompose
@@ -69,5 +91,46 @@ class CacheTest extends org.scalatest.FunSpec {
       cp.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
       assert(count == 1)
     })
+
+    it("should decompose tuple2")(new Fixture {
+      val (id, (a, b)) = decompose((1, 2))
+      assert((a.id, b.id) == ((id.item("_1"), id.item("_2"))))
+      assert((a.unwrapUNSAFE, b.unwrapUNSAFE) == ((1, 2)))
+    })
+    it("should decompose Seq")(new Fixture {
+      val (id, s) = decompose(Seq(1, 2, 3))
+      assert(s.map(_.id) == Seq(id.item("0"), id.item("1"), id.item("2")))
+      assert(s.map(_.unwrapUNSAFE) == Seq(1, 2, 3))
+    })
   }
+  describe("Cacheable") {
+    it("should cache Int") {
+      assertCacheable(1)
+      assertCacheable(0)
+      assertCacheable(-1)
+    }
+    it("should cache String") {
+      assertCacheable("")
+      assertCacheable("abc")
+      assertCacheable("ABC123")
+    }
+    it("should cache Array[Int]") {
+      assertCacheable(Array[Int]())
+      assertCacheable(Array[Int](1, 2, 3))
+    }
+    it("should cache Seq[Int]") {
+      assertCacheable(Seq[Int]())
+      assertCacheable(Seq[Int](1, 2, 3))
+    }
+    it("should cache Seq[Custom]") {
+      import CacheTest.Custom
+      implicit val c = Cacheable.ofSerializable[Custom]
+      assertCacheable(Custom(1))
+      assertCacheable(Seq(Custom(1), Custom(2)))
+    }
+  }
+}
+
+object CacheTest {
+  case class Custom(i: Int) extends java.io.Serializable
 }

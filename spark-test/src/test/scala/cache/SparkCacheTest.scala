@@ -42,6 +42,16 @@ class SparkCacheTest extends org.scalatest.FunSpec {
           count += 1
           df.select(('v + 1).as("v"))
         }
+
+        val Array(train, test) = cp.cache(df) { df =>
+          df.randomSplit(Array(1.0, 0.0))
+        }.decompose
+
+        cp.unwrap((train, test)) { case (train, test) =>
+          assert(train.count() == 3)
+          assert(test.count() == 0)
+        }
+
         df2
       }
 

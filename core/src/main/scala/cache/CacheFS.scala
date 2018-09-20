@@ -23,6 +23,6 @@ object CacheFS {
     val sha1 = java.security.MessageDigest.getInstance("SHA-1")
     val digest = sha1.digest(id.stringForDigest.getBytes)
     val digestString = digest.map { x => f"$x%02x" }.mkString("")
-    s"$className/${id.name}/$digestString"
+    s"$className/${id.path.mkString("/")}/$digestString"
   }
 }
