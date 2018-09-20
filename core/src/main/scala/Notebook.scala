@@ -56,7 +56,7 @@ object Notebook {
             }
             object ${tpname.toTermName} {
               $mainMethod
-              def scalanb__source: _root_.java.lang.String = $src
+              def scalanb__source: _root_.java.lang.String = ${util.stringLiteral(src)}
               ..$ostats
             }
           """)
