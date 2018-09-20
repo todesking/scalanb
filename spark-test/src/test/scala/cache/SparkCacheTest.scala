@@ -47,9 +47,10 @@ class SparkCacheTest extends org.scalatest.FunSpec {
           df.randomSplit(Array(1.0, 0.0))
         }.decompose
 
-        cp.unwrap((train, test)) { case (train, test) =>
-          assert(train.count() == 3)
-          assert(test.count() == 0)
+        cp.unwrap((train, test)) {
+          case (train, test) =>
+            assert(train.count() == 3)
+            assert(test.count() == 0)
         }
 
         df2
