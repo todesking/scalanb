@@ -1,6 +1,7 @@
 package com.todesking.scalanb.cache
 
 import com.todesking.scalanb.io.FileSystem
+import com.todesking.scalanb.util.Digest
 
 class CacheFS(val underlying: FileSystem, val className: String) {
   def protocol: String = underlying.protocol
@@ -20,9 +21,6 @@ class CacheFS(val underlying: FileSystem, val className: String) {
 
 object CacheFS {
   def pathString(className: String, id: DepID): String = {
-    val sha1 = java.security.MessageDigest.getInstance("SHA-1")
-    val digest = sha1.digest(id.stringForDigest.getBytes)
-    val digestString = digest.map { x => f"$x%02x" }.mkString("")
-    s"$className/${id.path.mkString("/")}/$digestString"
+    s"$className/${id.path.mkString("/")}/${Digest.hex(id.stringForDigest)}"
   }
 }

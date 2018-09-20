@@ -129,6 +129,20 @@ class CacheTest extends org.scalatest.FunSpec {
       assertCacheable(Seq(Custom(1), Custom(2)))
     }
   }
+  describe("Dep") {
+    it("should provide map and foreach")(new Fixture {
+      val x = cp.nocache { 10 }
+      val y = x.map(_ + 11)
+      y.foreach { y =>
+        assert(y == 21)
+      }
+      val z = y.map(_ + 12).map(_ * 10)
+      z.foreach { z =>
+        assert(z == 330)
+      }
+      assert(y.map(_ + 1).id == y.map(_ + 1).id)
+    })
+  }
 }
 
 object CacheTest {
