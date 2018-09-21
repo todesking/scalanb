@@ -2,6 +2,7 @@ package test.spark.cache
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.types
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.{ functions => fn }
@@ -15,6 +16,16 @@ import test.io.FileSystemTestUtil
 
 class SparkCacheTest extends org.scalatest.FunSpec {
   import FileSystemTestUtil.withTmpDir
+
+  implicit val vectorEncoder = new org.apache.spark.sql.Encoder[Vector] {
+    import types._
+    override val schema = StructType(Seq(
+      StructField("type", ByteType, nullable = false),
+      StructField("size", IntegerType, nullable = true),
+      StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = true),
+      StructField("values", ArrayType(DoubleType, containsNull = false), nullable = true)))
+    override val clsTag = scala.reflect.classTag[Vector]
+  }
 
   def withSpark(f: SparkSession => Unit): Unit = {
     val spark = SparkSession.builder()
@@ -78,17 +89,6 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       import spark.implicits._
       import com.todesking.scalanb.spark.AllImplicits._
 
-      import org.apache.spark.sql.types
-
-      implicit val vectorEncoder = new org.apache.spark.sql.Encoder[Vector] {
-        import types._
-        override val schema = StructType(Seq(
-          StructField("type", ByteType, nullable = false),
-          StructField("size", IntegerType, nullable = true),
-          StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = true),
-          StructField("values", ArrayType(DoubleType, containsNull = false), nullable = true)))
-        override val clsTag = scala.reflect.classTag[Vector]
-      }
       val fs = new LocalFileSystem(tmp.toString)
       val cfs = new CacheFS(fs, "test")
       val cp = new Checkpoint(cfs)
@@ -107,4 +107,24 @@ class SparkCacheTest extends org.scalatest.FunSpec {
     }
   })
 
+  it("should cache MLWritable")(withSpark { implicit spark =>
+    withTmpDir { tmp =>
+      import spark.implicits._
+      import com.todesking.scalanb.spark.AllImplicits._
+      val fs = new LocalFileSystem(tmp.toString)
+      val cfs = new CacheFS(fs, "test")
+      val cp = new Checkpoint(cfs)
+
+      import org.apache.spark.ml
+      val c = implicitly[Cacheable[ml.classification.LogisticRegression]]
+      val x = cp.source { new ml.classification.LogisticRegression().setRegParam(3.0) }
+
+      c.save(cfs, x)
+      val cx = c.load(cfs, x.id).get
+      cp.join((x, cx)) {
+        case (c, cx) =>
+          assert(c.getRegParam == cx.getRegParam)
+      }
+    }
+  })
 }

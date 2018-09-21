@@ -5,10 +5,12 @@ import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types
+import org.apache.spark.ml
 import org.apache.spark.ml.linalg.SQLDataTypes
 
+import scala.reflect.runtime.universe.TypeTag
+
 import com.todesking.scalanb.cache.{ Cacheable, Dep, DepID, CacheFS }
-import com.todesking.scalanb.spark.hdfs.HDFS
 
 trait Implicits {
   implicit def datasetCacheable[A: Encoder](implicit spark: SparkSession): Cacheable[Dataset[A]] = new Cacheable[Dataset[A]] {
@@ -18,24 +20,22 @@ trait Implicits {
     override def load(fs: CacheFS, id: DepID) =
       dfc.load(fs, id).map { df => Dep.buildUNSAFE(id, df.unwrapUNSAFE.as[A]) }
   }
+
   implicit def dataFrameCachable(implicit spark: SparkSession): Cacheable[DataFrame] = new Cacheable[DataFrame] {
     import spark.implicits._
 
-    private[this] def mkPath(fs: CacheFS, id: DepID, name: String): String = {
-      s"${fs.protocol}://${fs.path(id)}/$name"
-    }
     override def save(fs: CacheFS, d: Dep[DataFrame]) = {
       val df = d.unwrapUNSAFE
       spark.createDataset(serializeSchema(df.schema).split("\n").toSeq)
-        .write.text(mkPath(fs, d.id, "schema.json"))
-      df.write.orc(mkPath(fs, d.id, "data.orc"))
+        .write.text(fs.uri(d.id, "schema.json"))
+      df.write.orc(fs.uri(d.id, "data.orc"))
     }
     override def load(fs: CacheFS, id: DepID) = {
-      val p = mkPath(fs, id, "schema.json")
-      if (!HDFS.exists(p)) None
+      val lp = fs.localPath(id)
+      if (!fs.underlying.exists(lp)) None
       else {
-        val schema = deserializeSchema(spark.read.text(mkPath(fs, id, "schema.json")).as[String].collect().mkString("\n"))
-        Some(Dep.buildUNSAFE(id, spark.read.schema(schema).orc(mkPath(fs, id, "data.orc"))))
+        val schema = deserializeSchema(spark.read.text(fs.uri(id, "schema.json")).as[String].collect().mkString("\n"))
+        Some(Dep.buildUNSAFE(id, spark.read.schema(schema).orc(fs.uri(id, "data.orc"))))
       }
     }
 
@@ -127,5 +127,29 @@ trait Implicits {
       deserStruct(Json.parse(s))
     }
   }
+
+  // TODO: Use macro to safer usage
+  implicit def mlCacheable[A <: ml.util.MLWritable: TypeTag]: Cacheable[A] = new Cacheable[A] {
+    val readable = {
+      import scala.reflect.runtime.{ currentMirror => cm }
+      val companion = implicitly[TypeTag[A]].tpe.typeSymbol.companion.asModule
+      cm.reflectModule(companion).instance.asInstanceOf[ml.util.MLReadable[A]]
+    }
+
+    override def save(fs: CacheFS, d: Dep[A]) = {
+      d.unwrapUNSAFE.write.save(fs.uri(d.id))
+    }
+
+    override def load(fs: CacheFS, id: DepID) = {
+      val lp = fs.localPath(id)
+      val uri = fs.uri(id)
+      if (!fs.underlying.exists(lp)) None
+      else {
+        Some(Dep.buildUNSAFE(
+          id, readable.read.load(uri).asInstanceOf[A]))
+      }
+    }
+  }
+
 }
 

@@ -6,7 +6,6 @@ class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
     val dbg = false
     var cache = scala.collection.mutable.Map.empty[DepID, Array[Byte]]
-    override def path(id: DepID) = ???
     override def write(id: DepID, data: Array[Byte]) = {
       if (dbg) println(s"Write: $id")
       cache(id) = data
