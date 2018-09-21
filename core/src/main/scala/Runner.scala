@@ -33,10 +33,10 @@ object Runner {
   case class Args(out: Out, useLog: Boolean, ipynbOnError: Boolean, saveSource: Boolean, fsForCache: FileSystem)
 
   def defaultHistPathFor(fsName: String): String =
-    s"${FileSystem.getFactory("file").homePath}/.scalanb/hist"
+    s"${FileSystem.getFactory(fsName).homePath}/.scalanb/hist"
 
   def defaultCachePathFor(fsName: String): String =
-    s"${FileSystem.getFactory("file").homePath}/.scalanb/cache"
+    s"${FileSystem.getFactory(fsName).homePath}/.scalanb/cache"
 
   def parseArgs(args: Seq[String]): (Args, Seq[String]) = {
     val rest = {
