@@ -1,10 +1,15 @@
 package test.spark.cache
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.ml.linalg.Vectors
+import org.apache.spark.ml.linalg.Vector
+import org.apache.spark.sql.{ functions => fn }
 
 import com.todesking.scalanb.io.LocalFileSystem
 import com.todesking.scalanb.cache.Checkpoint
 import com.todesking.scalanb.cache.CacheFS
+import com.todesking.scalanb.cache.Cacheable
 
 import test.io.FileSystemTestUtil
 
@@ -65,6 +70,40 @@ class SparkCacheTest extends org.scalatest.FunSpec {
         assert(df.as[Int].collect().toSeq == Seq(2, 3, 4))
       }
       assert(count == 1)
+    }
+  })
+
+  it("shoud cache DataFrame with ml vectors")(withSpark { implicit spark =>
+    withTmpDir { tmp =>
+      import spark.implicits._
+      import com.todesking.scalanb.spark.AllImplicits._
+
+      import org.apache.spark.sql.types
+
+      implicit val vectorEncoder = new org.apache.spark.sql.Encoder[Vector] {
+        import types._
+        override val schema = StructType(Seq(
+          StructField("type", ByteType, nullable = false),
+          StructField("size", IntegerType, nullable = true),
+          StructField("indices", ArrayType(IntegerType, containsNull = false), nullable = true),
+          StructField("values", ArrayType(DoubleType, containsNull = false), nullable = true)))
+        override val clsTag = scala.reflect.classTag[Vector]
+      }
+      val fs = new LocalFileSystem(tmp.toString)
+      val cfs = new CacheFS(fs, "test")
+      val cp = new Checkpoint(cfs)
+
+      val vec = fn.udf { i: Int => Vectors.dense(Array(i.toDouble)) }
+      val v = cp.source { spark.createDataset(Seq(1, 2, 3)).toDF("value").select('value, vec('value).as("vector")) }
+      val c = implicitly[Cacheable[DataFrame]]
+
+      c.save(cfs, v)
+      val cv = c.load(cfs, v.id).get
+
+      cp.join((v, cv)) {
+        case (v, cv) =>
+          assert(v.as[(Int, Vector)].collect().toSeq == cv.as[(Int, Vector)].collect().toSeq)
+      }
     }
   })
 

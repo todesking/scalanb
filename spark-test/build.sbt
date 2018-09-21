@@ -8,7 +8,7 @@ val sparkVersion = "2.3.1"
 scalacOptions += "-Yrangepos"
 
 libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provided"
-libraryDependencies += "org.apache.spark" %% "spark-hive" % sparkVersion % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided"
 
 dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion
 dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion
