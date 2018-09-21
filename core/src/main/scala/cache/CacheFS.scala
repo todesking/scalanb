@@ -20,6 +20,9 @@ class CacheFS(val underlying: FileSystem, val className: String) {
     if (underlying.exists(p)) Some(underlying.readBytes(p))
     else None
   }
+
+  def exists(id: DepID): Boolean =
+    underlying.exists(localPath(id))
 }
 
 object CacheFS {

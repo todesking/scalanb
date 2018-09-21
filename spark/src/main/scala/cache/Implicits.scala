@@ -32,7 +32,7 @@ trait Implicits {
     }
     override def load(fs: CacheFS, id: DepID) = {
       val lp = fs.localPath(id)
-      if (!fs.underlying.exists(lp)) None
+      if (!fs.exists(id)) None
       else {
         val schema = deserializeSchema(spark.read.text(fs.uri(id, "schema.json")).as[String].collect().mkString("\n"))
         Some(Dep.buildUNSAFE(id, spark.read.schema(schema).orc(fs.uri(id, "data.orc"))))
@@ -141,12 +141,10 @@ trait Implicits {
     }
 
     override def load(fs: CacheFS, id: DepID) = {
-      val lp = fs.localPath(id)
-      val uri = fs.uri(id)
-      if (!fs.underlying.exists(lp)) None
+      if (!fs.exists(id)) None
       else {
         Some(Dep.buildUNSAFE(
-          id, readable.read.load(uri).asInstanceOf[A]))
+          id, readable.read.load(fs.uri(id)).asInstanceOf[A]))
       }
     }
   }
