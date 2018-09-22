@@ -48,6 +48,8 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
 
     final def expr(value: Unit): Unit = {}
     final def expr(value: Nothing): Nothing = throw new AssertionError
+    final def exprDiscard(value: Unit): Unit = { println("expr(Unit)") }
+    final def exprDiscard(value: Nothing): Nothing = throw new AssertionError
 
     def expr[A: Format](value: A): A = {
       exprDiscard[A](value)
