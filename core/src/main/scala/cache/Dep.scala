@@ -23,7 +23,7 @@ object Dep {
   implicit def fromInt(i: Int): Dep[Int] = buildUNSAFE(DepID(s"int:$i", s"$i", Seq()), i)
 
   implicit def format[A: Format]: Format[Dep[A]] = Format[Dep[A]] { d =>
-    implicitly[Format[A]].apply(d.unwrapUNSAFE)
+    Format.of[A].apply(d.unwrapUNSAFE)
   }
 
   class MacroImpl(val c: Context) {

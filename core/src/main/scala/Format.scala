@@ -11,6 +11,7 @@ trait ErrorFormat {
 }
 
 object Format {
+  def of[A: Format]: Format[A] = implicitly[Format[A]]
   def apply[A](f: A => Value): Format[A] =
     new Format[A] {
       override def apply(v: A) = f(v)

@@ -9,6 +9,7 @@ val versionSetting = Seq(
 )
 
 val commonSettings = versionSetting ++ Seq(
+  scalaVersion := Scala2_11,
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",
