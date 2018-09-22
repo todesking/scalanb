@@ -12,6 +12,7 @@ sealed abstract class DepID {
   def map(body: String): DepID.Map =
     DepID.Map(this, body)
   override def toString = stringForDigest
+  def shortString: String = s"$name/${Digest.hex(stringForDigest)}"
 }
 
 object DepID {

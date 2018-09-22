@@ -3,6 +3,9 @@ package com.todesking.scalanb
 import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
+import com.todesking.scalanb.cache.Checkpoint
+import com.todesking.scalanb.cache.CacheFS
+import com.todesking.scalanb.cache.DepID
 
 object Runner {
   def run[A](ctx: NBContext)(f: NBContext => A): A = {
@@ -107,7 +110,19 @@ object Runner {
     val listeners = logWriter.fold[Seq[EventListener]](Seq(ipynbListener)) { w =>
       Seq(ipynbListener, new EventListener.Log(w))
     }
-    val ctx = new NBContext(notebookName, notebookClassName, listeners, parsedArgs.fsForCache)
+
+    val logCache = { (id: DepID, cached: Boolean) =>
+      if (cached) {
+        println(s"Load from cache: ${id.shortString}")
+      } else {
+        println(s"Uncached: ${id.shortString}")
+      }
+    }
+    val newCP = { state: NBState =>
+      new Checkpoint(new CacheFS(parsedArgs.fsForCache, state.className), logCache)
+    }
+
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, newCP)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
