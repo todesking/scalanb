@@ -42,17 +42,20 @@ object Format {
 }
 
 object ErrorFormat {
+  def buildStackTrace(t: Throwable): Seq[String] = {
+    def gather(t: Throwable, prefix: String): Seq[String] = {
+      val trace = (prefix + t.toString) +: t.getStackTrace.map { st => s"  ${st.toString}" }
+      if (t.getCause == null) trace
+      else trace ++ gather(t.getCause, "Caused by: ")
+    }
+    gather(t, "")
+  }
   implicit val default: ErrorFormat = new ErrorFormat {
     override def apply(t: Throwable) = {
-      def gather(t: Throwable, prefix: String): Seq[String] = {
-        val trace = (prefix + t.toString) +: t.getStackTrace.map { st => s"  ${st.toString}" }
-        if (t.getCause == null) trace
-        else trace ++ gather(t.getCause, "Caused by: ")
-      }
       Output.Error(
         "Exception",
         "(Does Jupyter really use this field??)",
-        gather(t, ""))
+        buildStackTrace(t))
     }
   }
 }

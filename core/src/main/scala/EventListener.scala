@@ -198,7 +198,7 @@ object EventListener {
         flush(state)
       case Event.Error(t, format) =>
         write(t.toString, "ERR: ")
-        write(t.getStackTrace.map("ERR:   " + _.toString))
+        write(ErrorFormat.buildStackTrace(t).map("ERR:   " + _.toString))
         flush(state)
       case Event.StdOut(s) => write(s, "stdout: ")
       case Event.StdErr(s) => write(s, "stderr: ")
