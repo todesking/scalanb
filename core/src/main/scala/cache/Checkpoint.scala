@@ -1,5 +1,7 @@
 package com.todesking.scalanb.cache
 
+import com.todesking.scalanb.util.MacroUtil
+
 import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
@@ -31,19 +33,20 @@ object Checkpoint {
     import c.universe.Quasiquote
     import c.universe.Tree
 
+    val util = MacroUtil.bind[c.type](c)
+
+    val valName = util.enclosingOwnerName
+
     def nocache0[R: WeakTypeTag](f: Expr[R]): Expr[Dep[R]] =
-      impl[Unit, R](f.tree.toString, f.tree)
+      nocacheImpl[Unit, R](f.tree.toString, f.tree)
 
     def nocache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[R]): Expr[Dep[R]] =
-      impl[A, R](f.tree.toString, q"$f($args.value)")
+      nocacheImpl[A, R](f.tree.toString, q"$f($args.value)")
 
-    private[this] def impl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree): Expr[Dep[R]] = {
-      val name = c.internal.enclosingOwner.name.decodedName.toString
-      val id = q"_root_.com.todesking.scalanb.cache.DepID($name, $src, _root_.scala.collection.immutable.Seq())"
+    private[this] def nocacheImpl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree): Expr[Dep[R]] = {
+      val id = q"_root_.com.todesking.scalanb.cache.DepID($valName, $src, _root_.scala.collection.immutable.Seq())"
       Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.buildUNSAFE($id, $value)")
     }
-
-    val valName = c.internal.enclosingOwner.name.decodedName.toString
 
     def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]]): Expr[Dep[R]] = {
       def src = f.tree.toString

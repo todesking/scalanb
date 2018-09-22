@@ -17,6 +17,10 @@ object MacroUtil {
       c.Expr[String](tree)
     }
 
+    // Sometimes val name contains trailing space. Weird.
+    def enclosingOwnerName: String =
+      c.internal.enclosingOwner.name.decodedName.toString.replaceAll("""\s+$""", "")
+
     def wholeSource(trees: Seq[Tree]): String =
       sources(trees).flatMap(_._1).mkString("\n")
 
