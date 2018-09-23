@@ -8,6 +8,7 @@ object MacroUtil {
   class Impl[C <: Context](val c: C) {
     import c.universe.Expr
     import c.universe.Tree
+    private[this] val debug = true
 
     def stringLiteral(s: String): Expr[String] = {
       import c.universe._
@@ -40,6 +41,7 @@ object MacroUtil {
             case _ => false
           }
           val src = if (cont || unitInLast) None else Some(source(t, start = if (pos == 0) None else Some(pos + 1)))
+          if (debug) println(s"Source: tree=$t, src=$src, pos=${t.pos}")
           (math.max(end, pos), trees :+ ((src, t)))
       }._2
     }
