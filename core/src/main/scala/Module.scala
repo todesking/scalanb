@@ -1,5 +1,7 @@
 package com.todesking.scalanb
 
+import com.todesking.scalanb.util.MacroUtil
+
 import scala.annotation.StaticAnnotation
 import scala.reflect.macros.blackbox.Context
 
@@ -15,6 +17,8 @@ object Module {
     import c.TypeName
     import c.universe.Tree
     import c.universe.Quasiquote
+
+    val util = MacroUtil.bind[c.type](c)
 
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
@@ -42,6 +46,7 @@ object Module {
           def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {
             ctx.loadModule[$tpname]($moduleName, $className) {  c => new $tpname(...$argNames)(c) }
           }
+          def scalanb__source: String = ${util.stringLiteral(util.wholeSource(stats))}
           ..$ostats
         }
       """)

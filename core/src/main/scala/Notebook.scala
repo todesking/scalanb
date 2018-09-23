@@ -37,7 +37,7 @@ object Notebook {
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {
         case Seq(cdef @ q"class $tpname { ..$stats }") =>
-          val src = stats.map(util.source(_)).mkString("\n")
+          val src = util.wholeSource(stats)
           transform(tpname, stats, Seq(), src)
         case Seq(cdef @ q"class $tpname { ..$stats }", q"object $oname { ..$ostats }") =>
           val src = util.wholeSource(stats)

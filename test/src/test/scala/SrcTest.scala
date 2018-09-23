@@ -10,10 +10,22 @@ class RecordEventListener extends nb.EventListener {
 
 class SrcTest extends org.scalatest.FunSpec {
   it("Notebook should have its source") {
-    assert(SrcTest.NotebookTest.scalanb__source == """"hello"
+    assert(SrcTest.NotebookTest.scalanb__source == """
+      |"hello"
       |val m = NotebookTest.DeepModule.load(1)
       |val m2 = ShallowModule.load()
-      |m.a""".stripMargin)
+      |m.a""".stripMargin.drop(1))
+    assert(SrcTest.Deep.NestedNotebook.scalanb__source == """
+      |import com.todesking.scalanb
+      |import scalanb.NBContext
+      |type A = NBContext""".stripMargin.drop(1))
+  }
+  it("Module should have its source") {
+    assert(SrcTest.Deep.NestedModule.scalanb__source == """
+      |import com.todesking.scalanb
+      |import scalanb.{NBContext => Ctx}
+      |def f[A] = 1
+      |f[Ctx]""".stripMargin.drop(1))
   }
   it("Notebook should record its execution") {
     val el = new RecordEventListener
@@ -34,6 +46,22 @@ class SrcTest extends org.scalatest.FunSpec {
       E.ExitModule("ShallowModule", classOf[SrcTest.ShallowModule].getName),
       E.Code("m.a"),
       E.Expr(nb.Format.of[Int].apply(3))))
+  }
+  it("Source extractor can handle various statements") {
+    assert(nb.Inspect.sources({
+      import com.todesking.scalanb
+    }) == Seq("import com.todesking.scalanb"))
+    assert(nb.Inspect.sources({
+      val x = 10
+    }) == Seq("val x = 10"))
+    assert(nb.Inspect.sources({
+      val x: Double = 10
+    }) == Seq("val x: Double = 10"))
+    assert(nb.Inspect.sources({
+      val x: Double = 10
+      val y = 20
+      y
+    }) == Seq("val x: Double = 10", "val y = 20", "y"))
   }
 }
 
@@ -57,6 +85,22 @@ object SrcTest {
     class DeepModule(x: Int) {
       val a = x + 2
       val b = a
+    }
+  }
+
+  object Deep {
+    @nb.Notebook
+    class NestedNotebook {
+      import com.todesking.scalanb
+      import scalanb.NBContext
+      type A = NBContext
+    }
+    @nb.Module
+    class NestedModule(i: Int, s: String, d: Double)(implicit im: Float) {
+      import com.todesking.scalanb
+      import scalanb.{NBContext => Ctx}
+      def f[A] = 1
+      f[Ctx]
     }
   }
 }

@@ -4,6 +4,8 @@ import com.todesking.scalanb.util.MacroUtil
 
 import scala.reflect.macros.blackbox.Context
 
+import scala.language.experimental.macros
+
 object Inspect {
   def apply[A: c.WeakTypeTag](c: Context)(body: c.Expr[A]): c.Expr[A] = {
     import c.universe._
@@ -14,13 +16,28 @@ object Inspect {
     }
   }
 
+  def sources(x: Any): Seq[String] = macro sourcesImpl
+
+  def sourcesImpl(c: Context)(x: c.Expr[Any]): c.Expr[Seq[String]] = {
+    import c.universe._
+    val util = MacroUtil.bind[c.type](c)
+
+    val srcs =
+      (x.tree match {
+        case Block(stats, expr) => util.sources(stats :+ expr)
+        case x => util.sources(Seq(x))
+      }).flatMap(_._1)
+        .map(util.stringLiteral)
+    c.Expr[Seq[String]](q"_root_.scala.Seq(..$srcs)")
+  }
+
   def transform[A: c.WeakTypeTag](c: Context)(trees: Seq[c.Tree], discardAllValues: Boolean): c.Expr[A] =
     new MacroImpl[c.type](c).transform(trees, discardAllValues)
 
   class MacroImpl[C <: Context](val c: C) {
-    import c.Expr
     import c.WeakTypeTag
-    import c.Tree
+    import c.Expr
+    import c.universe.Tree
     import c.universe.Quasiquote
 
     val util = MacroUtil.bind[c.type](c)

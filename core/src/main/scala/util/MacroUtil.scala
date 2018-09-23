@@ -34,7 +34,12 @@ object MacroUtil {
           val (start, end) = range(t)
           val last = source(t).last
           val cont = end <= pos || (end == pos + 1 && (last == ';' || last == '\n'))
-          val src = if (cont) None else Some(source(t, start = if (pos == 0) None else Some(pos + 1)))
+          // This tree may synthetic
+          val unitInLast = t match {
+            case Literal(Constant(())) => trees.size == ts.size - 1
+            case _ => false
+          }
+          val src = if (cont || unitInLast) None else Some(source(t, start = if (pos == 0) None else Some(pos + 1)))
           (math.max(end, pos), trees :+ ((src, t)))
       }._2
     }
