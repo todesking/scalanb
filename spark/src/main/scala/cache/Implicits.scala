@@ -41,14 +41,21 @@ trait Implicits {
 
     val simpleTypeToName = {
       import types._
-      Map(
+      Map[DataType, String](
         SQLDataTypes.VectorType -> "vector",
+        BooleanType -> "boolean",
         ByteType -> "byte",
         ShortType -> "short",
         IntegerType -> "integer",
         LongType -> "long",
         FloatType -> "float",
-        DoubleType -> "double")
+        DoubleType -> "double",
+        StringType -> "string",
+        BinaryType -> "binary",
+        DateType -> "date",
+        CalendarIntervalType -> "calendar_interval",
+        TimestampType -> "timestamp",
+        NullType -> "null")
     }
     val nameToSimpleType = simpleTypeToName.map { case (k, v) => (v, k) }
 
