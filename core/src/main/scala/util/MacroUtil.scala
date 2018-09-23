@@ -42,6 +42,7 @@ object MacroUtil {
 
     private[this] def range(t: Tree): (Int, Int) = {
       val noP = (Int.MaxValue, 0)
+      def extract(pos: c.universe.Position) = if (pos == c.universe.NoPosition) noP else (pos.start, pos.end)
 
       import c.universe._
       t match {
@@ -49,9 +50,9 @@ object MacroUtil {
           // This is synthetic tree and its pos point other place
           t.children.foldLeft(noP) { (p, t) => rangeUnion(p, range(t)) }
         case t @ ValDef(mods, name, tpt, rhs) =>
-          rangeUnion((t.pos.start, t.pos.end), range(rhs))
+          rangeUnion(extract(t.pos), range(rhs))
         case t =>
-          val initialP = if (t.pos == c.universe.NoPosition) noP else (t.pos.start, t.pos.end)
+          val initialP = if (t.pos == c.universe.NoPosition) noP else extract(t.pos)
           val childrenP =
             t.children.foldLeft(initialP) { (p, t) =>
               rangeUnion(p, range(t))
