@@ -15,17 +15,6 @@ class SrcTest extends org.scalatest.FunSpec {
       |val m = NotebookTest.DeepModule.load(1)
       |val m2 = ShallowModule.load()
       |m.a""".stripMargin.drop(1))
-    assert(SrcTest.Deep.NestedNotebook.scalanb__source == """
-      |import com.todesking.scalanb
-      |import scalanb.NBContext
-      |type A = NBContext""".stripMargin.drop(1))
-  }
-  it("Module should have its source") {
-    assert(SrcTest.Deep.NestedModule.scalanb__source == """
-      |import com.todesking.scalanb
-      |import scalanb.{NBContext => Ctx}
-      |def f[A] = 1
-      |f[Ctx]""".stripMargin.drop(1))
   }
   it("Notebook should record its execution") {
     val el = new RecordEventListener
@@ -85,22 +74,6 @@ object SrcTest {
     class DeepModule(x: Int) {
       val a = x + 2
       val b = a
-    }
-  }
-
-  object Deep {
-    @nb.Notebook
-    class NestedNotebook {
-      import com.todesking.scalanb
-      import scalanb.NBContext
-      type A = NBContext
-    }
-    @nb.Module
-    class NestedModule(i: Int, s: String, d: Double)(implicit im: Float) {
-      import com.todesking.scalanb
-      import scalanb.{NBContext => Ctx}
-      def f[A] = 1
-      f[Ctx]
     }
   }
 }
