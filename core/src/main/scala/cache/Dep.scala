@@ -6,7 +6,6 @@ import com.todesking.scalanb.util.MacroUtil
 import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
-import scala.language.implicitConversions
 
 class Dep[A] private (val id: DepID, val unwrapUNSAFE: A) {
   def decompose[B](implicit ev: Decomposable[A, B]): B = ev(this)
@@ -20,7 +19,6 @@ class Dep[A] private (val id: DepID, val unwrapUNSAFE: A) {
 
 object Dep {
   def buildUNSAFE[A](id: DepID, value: A) = new Dep(id, value)
-  implicit def fromInt(i: Int): Dep[Int] = buildUNSAFE(DepID(s"int:$i", s"$i", Seq()), i)
 
   implicit def format[A: Format]: Format[Dep[A]] = Format[Dep[A]] { d =>
     Format.of[A].apply(d.unwrapUNSAFE)

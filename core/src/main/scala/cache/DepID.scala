@@ -16,15 +16,28 @@ sealed abstract class DepID {
 }
 
 object DepID {
+  // Ref: https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/filesystem/model.html
+  // Also added common bad characters
+  private[this] val badChars = """.*[\/:?<>*|"\u0000-\u001f]+.*""".r
+  private[this] def requireFileNameSafe(s: String): Unit = s match {
+    case "" | ".." | "." | "/" =>
+      throw new RuntimeException(s"Name $s is not allowed")
+    case `badChars`() =>
+      throw new RuntimeException(s"Name $s is not allowed")
+    case _ =>
+  }
+
   def apply(name: String, src: String, deps: Seq[DepID]): Root = Root(name, src, deps)
 
   case class Root(override val name: String, src: String, override val deps: Seq[DepID]) extends DepID {
+    requireFileNameSafe(name)
     def stringForDigest: String =
       s"$name[$src] ${if (deps.nonEmpty) s"<- { ${deps.map(_.stringForDigest).mkString(", ")} }" else ""}"
     override def path = Seq(name)
   }
 
   case class Item(parent: DepID, index: String) extends DepID {
+    requireFileNameSafe(index)
     override def name = s"${parent.name}.$index"
     override def deps = Seq(parent)
     override def stringForDigest = s"(${parent.stringForDigest}).$index"
