@@ -20,7 +20,7 @@ class HdfsFileSystemFactory extends FileSystemFactory {
 class HdfsFileSystem(val basePath: String) extends FileSystem {
   private[this] val fs = HDFS.fs
   private[this] val base = new Path(basePath)
-  private[this] val protocolRe = """(\w+)://""".r
+  private[this] val protocolRe = """(\w+)://.*""".r
   private[this] def resolve(path: String) = new Path(base, path)
 
   override val protocol = basePath match {
