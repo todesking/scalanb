@@ -5,10 +5,12 @@ import scala.reflect.macros.blackbox.Context
 object MacroUtil {
   def bind[C <: Context](c: C): Impl[C] = new Impl[C](c)
 
+  private[this] var treeToSource = Map.empty[String, String]
+  private[this] val debug = false
+
   class Impl[C <: Context](val c: C) {
     import c.universe.Expr
     import c.universe.Tree
-    private[this] val debug = true
 
     def stringLiteral(s: String): Expr[String] = {
       import c.universe._
@@ -21,6 +23,18 @@ object MacroUtil {
     // Sometimes val name contains trailing space. Weird.
     def enclosingOwnerName: String =
       c.internal.enclosingOwner.name.decodedName.toString.replaceAll("""\s+$""", "")
+
+    def register(t: Tree): Unit = {
+      // When tree is transformed via annotation macro expantion,
+      // the tree's pos mutated from range pos to offset pos.
+      // Still unclear who does that.
+      // Whatever, I'll save ranged tree and its source, and use it later for range-vanished tree.
+      if (t.pos.isRange && !treeToSource.contains(t.toString)) {
+        val src = source(t)
+        treeToSource = treeToSource + (t.toString -> source(t))
+        t.children.foreach(register)
+      }
+    }
 
     def wholeSource(trees: Seq[Tree]): String =
       sources(trees).flatMap(_._1).mkString("\n")
@@ -70,6 +84,9 @@ object MacroUtil {
 
     // Read raw source code from tree(NOTE: *best effort*)
     def source(t: Tree, start: Option[Int] = None): String = {
+      if (!t.pos.isRange && treeToSource.contains(t.toString))
+        return treeToSource(t.toString)
+
       def clean(s: String) = s.replaceAll("""^\s+|\s+$""", "")
       def content(t: Tree): Array[Char] = {
         val c = t.pos.source.content

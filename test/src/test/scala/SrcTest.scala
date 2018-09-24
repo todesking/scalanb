@@ -15,6 +15,8 @@ class SrcTest extends org.scalatest.FunSpec {
       |val m = NotebookTest.DeepModule.load(1)
       |val m2 = ShallowModule.load()
       |m.a""".stripMargin.drop(1))
+    assert(SrcTest.NotebookTest.ModuleInCompanion.scalanb__source == """
+      |val x = 1234""".stripMargin.drop(1))
   }
   it("Notebook should record its execution") {
     val el = new RecordEventListener
@@ -70,6 +72,10 @@ object SrcTest {
     val x = 1
   }
   object NotebookTest {
+    @nb.Module
+    class ModuleInCompanion {
+      val x = 1234
+    }
     @nb.Module
     class DeepModule(x: Int) {
       val a = x + 2

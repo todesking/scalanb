@@ -49,7 +49,9 @@ object Notebook {
       val nbName = tpname.toString
       val nbClassName = q"_root_.scala.Predef.classOf[$tpname].getName"
       val mainMethod = makeMain(tpname, nbName, nbClassName)
-      Expr[Any](q"""
+      stats.foreach(util.register)
+      ostats.foreach(util.register)
+      val allTree = q"""
             class $tpname(implicit ..$args) {
               ..$prelude
               ..${Inspect.transform(context)(stats, true)}
@@ -59,7 +61,8 @@ object Notebook {
               def scalanb__source: _root_.java.lang.String = ${util.stringLiteral(src)}
               ..$ostats
             }
-          """)
+          """
+      Expr[Any](allTree)
     }
   }
 

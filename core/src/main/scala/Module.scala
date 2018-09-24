@@ -30,6 +30,9 @@ object Module {
     }
 
     def transform(tpname: TypeName, args: Seq[Seq[Tree]], stats: Seq[Tree], ostats: Seq[Tree]): Expr[Any] = {
+      stats.foreach(util.register)
+      ostats.foreach(util.register)
+
       val className = q"_root_.scala.Predef.classOf[$tpname].getName()"
       val moduleName = tpname.toString
       val argNames = args.map(_.map {
@@ -38,18 +41,23 @@ object Module {
       val loadArgs = args.map(_.map {
         case q"$mods val $name: $tpe = $expr" => q"val $name: $tpe = $expr"
       })
-      Expr[Any](q"""
+      val classTree = q"""
         class $tpname private (...$args)(implicit scalanb__context: _root_.com.todesking.scalanb.NBContext)  {
           ..${Inspect.transform(c)(stats, true)}
         }
-        object ${tpname.toTermName} {
-          def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {
-            ctx.loadModule[$tpname]($moduleName, $className) {  c => new $tpname(...$argNames)(c) }
-          }
-          def scalanb__source: String = ${util.stringLiteral(util.wholeSource(stats))}
-          ..$ostats
+      """
+
+      import c.universe._
+      val objTree = q"""
+      object ${tpname.toTermName} {
+        def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {
+          ctx.loadModule[$tpname]($moduleName, $className) {  c => new $tpname(...$argNames)(c) }
         }
-      """)
+        val scalanb__source = ${util.stringLiteral(util.wholeSource(stats))}
+        ..$ostats
+      }"""
+
+      c.Expr[Any](q"""$classTree; $objTree""")
     }
   }
 }
