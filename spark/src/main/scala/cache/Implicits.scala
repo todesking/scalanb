@@ -15,14 +15,14 @@ import com.todesking.scalanb.io.FileSystem
 
 trait Implicits {
   implicit def datasetCacheable[A: Encoder](implicit spark: SparkSession): Cacheable[Dataset[A]] = new Cacheable[Dataset[A]] {
-    val dfc = dataFrameCachable
+    val dfc = dataFrameCacheable
     override def save(fs: FileSystem, name: String)(d: Dataset[A]) =
       dfc.save(fs, name)(d.toDF)
     override def load(fs: FileSystem, name: String) =
       dfc.load(fs, name).map(_.as[A])
   }
 
-  implicit def dataFrameCachable(implicit spark: SparkSession): Cacheable[DataFrame] = new Cacheable[DataFrame] {
+  implicit def dataFrameCacheable(implicit spark: SparkSession): Cacheable[DataFrame] = new Cacheable[DataFrame] {
     override def save(fs: FileSystem, name: String)(df: DataFrame) = {
       val nfs = fs.namespace(name)
       nfs.writeString("schema.json", serializeSchema(df.schema))

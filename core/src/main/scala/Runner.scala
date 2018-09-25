@@ -117,11 +117,10 @@ object Runner {
         println(s"Uncached. Save to: ${loc}")
       }
     }
-    val newCP = { state: NBState =>
-      new Checkpoint(parsedArgs.fsForCache.namespace(state.className), logCache)
-    }
 
-    val ctx = new NBContext(notebookName, notebookClassName, listeners, newCP)
+    val cp = new Checkpoint(parsedArgs.fsForCache, logCache)
+
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, cp)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start

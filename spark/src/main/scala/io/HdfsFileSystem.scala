@@ -66,8 +66,6 @@ class HdfsFileSystem(val basePath: String) extends FileSystem {
   override def list(path: String): Seq[String] = {
     fs.listStatus(resolve(path)).map(_.getPath.getName)
   }
-  override def exists(path: String): Boolean = {
-    try { fs.getStatus(resolve(path)); true }
-    catch { case e: java.io.FileNotFoundException => false }
-  }
+  override def exists(path: String): Boolean =
+    fs.exists(resolve(path))
 }

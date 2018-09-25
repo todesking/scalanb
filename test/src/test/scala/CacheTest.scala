@@ -136,7 +136,7 @@ class CacheTest extends org.scalatest.FunSpec {
   describe("Dependable") {
     it("Int is dependable") {
       val d = implicitly[Dependable[Int, Int]]
-      assert(d(1).id == DepID.root(getClass.getName, "int.1", "1", Seq()))
+      assert(d(1).id == DepID.forValue("int.1", "1", Seq()))
     }
     it("Option[A] is dependable") {
       val d = implicitly[Dependable[Option[Int], Option[Int]]]

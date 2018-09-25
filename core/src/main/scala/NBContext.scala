@@ -8,7 +8,7 @@ case class NBState(
   val className: String,
   val namePath: Seq[String])
 
-class NBContext(_name: String, _className: String, listeners: Seq[EventListener], newCP: NBState => Checkpoint) {
+class NBContext(_name: String, _className: String, listeners: Seq[EventListener], val checkpoint: Checkpoint) {
   private[this] var _state: NBState = NBState(
     NBConfig.default,
     _name,
@@ -20,8 +20,6 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
   def setConfig(c: NBConfig): Unit = {
     _state = _state.copy(config = c)
   }
-
-  def checkpoint() = newCP(state)
 
   def setShowTimeMillis(l: Long): Unit = {
     setConfig(config.copy(showTimeMillis = l))
