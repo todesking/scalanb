@@ -28,7 +28,7 @@ trait Implicits {
       val df = d.unwrapUNSAFE
       spark.createDataset(serializeSchema(df.schema).split("\n").toSeq)
         .write.text(fs.uri(d.id, "schema.json"))
-      df.write.orc(fs.uri(d.id, "data.orc"))
+      df.cache().write.orc(fs.uri(d.id, "data.orc"))
     }
     override def load(fs: CacheFS, id: DepID) = {
       val lp = fs.localPath(id)
