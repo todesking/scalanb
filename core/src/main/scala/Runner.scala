@@ -111,11 +111,11 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
 
-    val logCache = { (id: DepID, cached: Boolean) =>
+    val logCache = { (cfs: CacheFS, id: DepID, cached: Boolean) =>
       if (cached) {
-        println(s"Load from cache: ${id.shortString}")
+        println(s"Load from cache: ${cfs.uri(id)}")
       } else {
-        println(s"Uncached: ${id.shortString}")
+        println(s"Uncached. Save to: ${cfs.uri(id)}")
       }
     }
     val newCP = { state: NBState =>
