@@ -9,7 +9,6 @@ import org.apache.spark.sql.{ functions => fn }
 
 import com.todesking.scalanb.io.LocalFileSystem
 import com.todesking.scalanb.cache.Checkpoint
-import com.todesking.scalanb.cache.CacheFS
 import com.todesking.scalanb.cache.Cacheable
 
 import test.io.FileSystemTestUtil
@@ -42,8 +41,7 @@ class SparkCacheTest extends org.scalatest.FunSpec {
   it("should cache DataFrame")(withTmpDir { tmp =>
     withSpark { implicit spark =>
       val fs = new LocalFileSystem(tmp.toString)
-      val cfs = new CacheFS(fs, "test")
-      val cp = new Checkpoint(cfs)
+      val cp = new Checkpoint(fs)
 
       import spark.implicits._
       import com.todesking.scalanb.spark.AllImplicits._
@@ -90,15 +88,16 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       import com.todesking.scalanb.spark.AllImplicits._
 
       val fs = new LocalFileSystem(tmp.toString)
-      val cfs = new CacheFS(fs, "test")
-      val cp = new Checkpoint(cfs)
+      val cp = new Checkpoint(fs)
 
       val vec = fn.udf { i: Int => Vectors.dense(Array(i.toDouble)) }
       val v = cp.source { spark.createDataset(Seq(1, 2, 3)).toDF("value").select('value, vec('value).as("vector")) }
-      val c = implicitly[Cacheable[DataFrame]]
 
-      c.save(cfs, v)
-      val cv = c.load(cfs, v.id).get
+      val c = implicitly[Cacheable[DataFrame]]
+      val cv = cp.join(v) { v =>
+        c.save(fs, "v2")(v)
+        c.load(fs, "v2").get
+      }
 
       cp.join((v, cv)) {
         case (v, cv) =>
@@ -112,15 +111,17 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       import spark.implicits._
       import com.todesking.scalanb.spark.AllImplicits._
       val fs = new LocalFileSystem(tmp.toString)
-      val cfs = new CacheFS(fs, "test")
-      val cp = new Checkpoint(cfs)
+      val cp = new Checkpoint(fs)
 
       import org.apache.spark.ml
       val c = implicitly[Cacheable[ml.classification.LogisticRegression]]
       val x = cp.source { new ml.classification.LogisticRegression().setRegParam(3.0) }
 
-      c.save(cfs, x)
-      val cx = c.load(cfs, x.id).get
+      val cx =
+        cp.join(x) { x =>
+          c.save(fs, "cx")(x)
+          c.load(fs, "cx").get
+        }
       cp.join((x, cx)) {
         case (c, cx) =>
           assert(c.getRegParam == cx.getRegParam)

@@ -1,33 +1,16 @@
 package test
 
-import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable }
+import com.todesking.scalanb.cache.{ DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable }
+import com.todesking.scalanb.io.{ FileSystem, LocalFileSystem }
 
 class CacheTest extends org.scalatest.FunSpec {
-  class MemoryFS extends CacheFS(null, "test") {
-    val dbg = false
-    var cache = scala.collection.mutable.Map.empty[(DepID, Seq[String]), Array[Byte]]
-    override def writeBytes(id: DepID, parts: String*)(data: Array[Byte]) = {
-      if (dbg) println(s"Write: $id-${parts.mkString("/")}")
-      cache((id, parts)) = data
-    }
-    override def readBytes(id: DepID, parts: String*) = {
-      if (dbg) println(s"Read: $id-${parts.mkString("/")}")
-      cache.get((id, parts))
-    }
-  }
+  import test.io.FileSystemTestUtil.withTmpDir
 
-  class Fixture {
-    val fs = new MemoryFS
+  def withFS(f: FileSystem => Unit): Unit =
+    withTmpDir { tmp => f(new LocalFileSystem(tmp.toString)) }
+
+  def assertCacheable[A: Cacheable](a: A): Unit = withFS { fs =>
     val cp = new Checkpoint(fs)
-
-    def decompose[A, B](a: A)(implicit ev: Decomposable[A, B]): (DepID, B) = {
-      val x = cp.source { a }
-      (x.id, x.decompose)
-    }
-  }
-
-  def assertCacheable[A: Cacheable](a: A): Unit = {
-    val cp = new Checkpoint(new MemoryFS)
     def eq(a: A): Any = a match {
       case x: Array[_] => x.toSeq
       case x => x
@@ -41,7 +24,8 @@ class CacheTest extends org.scalatest.FunSpec {
   }
 
   describe("Caching") {
-    it("should save/restore data")(new Fixture {
+    it("should save/restore data")(withFS { fs =>
+      val cp = new Checkpoint(fs)
       var count = 0
       def exec() = {
         val x = cp.source { 1 }
@@ -52,9 +36,9 @@ class CacheTest extends org.scalatest.FunSpec {
             count += 1
             x + y
         }
-        assert(!fs.cache.contains((x.id, Seq())))
-        assert(fs.cache.contains((z.id, Seq())))
-        assert(fs.cache.contains((w.id, Seq())))
+        assert(!fs.exists(Checkpoint.pathString(x.id)))
+        assert(fs.exists(Checkpoint.pathString(z.id)))
+        assert(fs.exists(Checkpoint.pathString(w.id)))
 
         w.unwrapUNSAFE
       }
@@ -66,7 +50,8 @@ class CacheTest extends org.scalatest.FunSpec {
     })
   }
   describe("Decomposable") {
-    it("should decompose dep value")(new Fixture {
+    it("should decompose dep value")(withFS { fs =>
+      val cp = new Checkpoint(fs)
       var count = 0
       def exec(): Dep[(Int, Int, Int)] = {
         val (a, b) = cp.source { (1, 2) }.decompose
@@ -91,12 +76,17 @@ class CacheTest extends org.scalatest.FunSpec {
       assert(count == 1)
     })
 
-    it("should decompose tuple2")(new Fixture {
+    def decompose[A, B](v: A)(implicit ev: Decomposable[A, B]): (DepID, B) = {
+      val cp = new Checkpoint(null)
+      val d = cp.source(v)
+      (d.id, d.decompose)
+    }
+    it("should decompose tuple2")({
       val (id, (a, b)) = decompose((1, 2))
       assert((a.id, b.id) == ((id.item("_1"), id.item("_2"))))
       assert((a.unwrapUNSAFE, b.unwrapUNSAFE) == ((1, 2)))
     })
-    it("should decompose Seq")(new Fixture {
+    it("should decompose Seq")({
       val (id, s) = decompose(Seq(1, 2, 3))
       assert(s.map(_.id) == Seq(id.item("0"), id.item("1"), id.item("2")))
       assert(s.map(_.unwrapUNSAFE) == Seq(1, 2, 3))
@@ -129,7 +119,8 @@ class CacheTest extends org.scalatest.FunSpec {
     }
   }
   describe("Dep") {
-    it("should provide map and foreach")(new Fixture {
+    it("should provide map and foreach")(withFS { fs =>
+      val cp = new Checkpoint(fs)
       val x = cp.source { 10 }
       val y = x.map(_ + 11)
       y.foreach { y =>
@@ -145,13 +136,13 @@ class CacheTest extends org.scalatest.FunSpec {
   describe("Dependable") {
     it("Int is dependable") {
       val d = implicitly[Dependable[Int, Int]]
-      assert(d(1).id == DepID.Root("int.1", "1", Seq()))
+      assert(d(1).id == DepID.root(getClass.getName, "int.1", "1", Seq()))
     }
     it("Option[A] is dependable") {
       val d = implicitly[Dependable[Option[Int], Option[Int]]]
       val id1 = implicitly[Dependable[Int, Int]].apply(1).id
-      assert(d(Some(1)).id == DepID.Root("option.Some(int.1)", "Some(int.1)", Seq(id1)))
-      assert(d(None).id == DepID.Root("option.None", "None", Seq()))
+      assert(d(Some(1)).id == DepID.forValue("option.Some(int.1)", "Some(int.1)", Seq(id1)))
+      assert(d(None).id == DepID.forValue("option.None", "None", Seq()))
     }
   }
 }

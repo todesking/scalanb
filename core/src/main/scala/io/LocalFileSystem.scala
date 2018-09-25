@@ -19,7 +19,11 @@ class LocalFileSystem(override val basePath: String) extends FileSystem {
   require(basePath.startsWith("/"))
   private[this] val base = Paths.get(basePath)
 
+  override type Self = LocalFileSystem
+
   override val baseUri = s"file://$basePath"
+
+  override def namespace(names: String*) = new LocalFileSystem(s"$basePath/${names.mkString("/")}")
 
   private[this] def prepareWrite(path: String): Unit = {
     val _ = Files.createDirectories(base.resolve(path).getParent)

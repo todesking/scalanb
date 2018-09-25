@@ -10,31 +10,30 @@ import org.apache.spark.ml.linalg.SQLDataTypes
 
 import scala.reflect.runtime.universe.TypeTag
 
-import com.todesking.scalanb.cache.{ Cacheable, Dep, DepID, CacheFS }
+import com.todesking.scalanb.cache.{ Cacheable, Dep, DepID }
+import com.todesking.scalanb.io.FileSystem
 
 trait Implicits {
   implicit def datasetCacheable[A: Encoder](implicit spark: SparkSession): Cacheable[Dataset[A]] = new Cacheable[Dataset[A]] {
     val dfc = dataFrameCachable
-    override def save(fs: CacheFS, d: Dep[Dataset[A]]) =
-      dfc.save(fs, Dep.buildUNSAFE(d.id, d.unwrapUNSAFE.toDF))
-    override def load(fs: CacheFS, id: DepID) =
-      dfc.load(fs, id).map { df => Dep.buildUNSAFE(id, df.unwrapUNSAFE.as[A]) }
+    override def save(fs: FileSystem, name: String)(d: Dataset[A]) =
+      dfc.save(fs, name)(d.toDF)
+    override def load(fs: FileSystem, name: String) =
+      dfc.load(fs, name).map(_.as[A])
   }
 
   implicit def dataFrameCachable(implicit spark: SparkSession): Cacheable[DataFrame] = new Cacheable[DataFrame] {
-    import spark.implicits._
-
-    override def save(fs: CacheFS, d: Dep[DataFrame]) = {
-      val df = d.unwrapUNSAFE
-      fs.underlying.writeString(fs.localPath(d.id, "schema.json"), serializeSchema(df.schema))
-      df.cache().write.orc(fs.uri(d.id, "data.orc"))
+    override def save(fs: FileSystem, name: String)(df: DataFrame) = {
+      val nfs = fs.namespace(name)
+      nfs.writeString("schema.json", serializeSchema(df.schema))
+      df.cache().write.orc(nfs.uri("data.orc"))
     }
-    override def load(fs: CacheFS, id: DepID) = {
-      val lp = fs.localPath(id)
-      if (!fs.exists(id)) None
+    override def load(fs: FileSystem, name: String) = {
+      if (!fs.exists(name)) None
       else {
-        val schema = deserializeSchema(fs.underlying.readString(fs.localPath(id, "schema.json")))
-        Some(Dep.buildUNSAFE(id, spark.read.schema(schema).orc(fs.uri(id, "data.orc"))))
+        val nfs = fs.namespace(name)
+        val schema = deserializeSchema(nfs.readString("schema.json"))
+        Some(spark.read.schema(schema).orc(nfs.uri("data.orc")))
       }
     }
 
@@ -142,15 +141,14 @@ trait Implicits {
       cm.reflectModule(companion).instance.asInstanceOf[ml.util.MLReadable[A]]
     }
 
-    override def save(fs: CacheFS, d: Dep[A]) = {
-      d.unwrapUNSAFE.write.save(fs.uri(d.id))
+    override def save(fs: FileSystem, name: String)(value: A) = {
+      value.write.save(fs.uri(name, "model"))
     }
 
-    override def load(fs: CacheFS, id: DepID) = {
-      if (!fs.exists(id)) None
+    override def load(fs: FileSystem, name: String) = {
+      if (!fs.exists(name)) None
       else {
-        Some(Dep.buildUNSAFE(
-          id, readable.read.load(fs.uri(id)).asInstanceOf[A]))
+        Some(readable.read.load(fs.uri(name, "model")).asInstanceOf[A])
       }
     }
   }

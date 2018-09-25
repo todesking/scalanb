@@ -156,3 +156,10 @@ Cache location could specified by `--cache` option. Default is `~/.scalanb/cache
 --cache=file:path=/path/to/cache
 --cache=hdfs:path=/path/to/cache # requires scalanb-spark
 ```
+
+## Cache file spec
+
+* `{root}/{namespace}/{name}`
+  * `{hex digest}
+    * `cache.json`: metadata(TODO)
+    * `data`: Serialized data(Format is type specific)

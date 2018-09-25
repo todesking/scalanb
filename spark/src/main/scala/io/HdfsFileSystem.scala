@@ -24,6 +24,11 @@ class HdfsFileSystem(val basePath: String) extends FileSystem {
   private[this] val protocolRe = """(\w+)://.*""".r
   private[this] def resolve(path: String) = new Path(base, path)
 
+  override type Self = HdfsFileSystem
+
+  override def namespace(names: String*) =
+    new HdfsFileSystem(s"$basePath/${names.mkString("/")}")
+
   override val protocol = basePath match {
     case `protocolRe`(p) => p
     case _ => "hdfs"
@@ -61,6 +66,8 @@ class HdfsFileSystem(val basePath: String) extends FileSystem {
   override def list(path: String): Seq[String] = {
     fs.listStatus(resolve(path)).map(_.getPath.getName)
   }
-  override def exists(path: String): Boolean =
-    fs.exists(resolve(path))
+  override def exists(path: String): Boolean = {
+    try { fs.getStatus(resolve(path)); true }
+    catch { case e: java.io.FileNotFoundException => false }
+  }
 }

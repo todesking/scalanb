@@ -12,6 +12,13 @@ trait FileSystem {
   val basePath: String
   val baseUri: String
 
+  type Self <: FileSystem
+
+  def uri(parts: String*): String =
+    s"$baseUri/${parts.mkString("/")}"
+
+  def namespace(names: String*): Self
+
   def prepare(): Unit
 
   def newWriter(path: String): BufferedWriter =

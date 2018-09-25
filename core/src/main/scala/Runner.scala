@@ -4,7 +4,6 @@ import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
 import com.todesking.scalanb.cache.Checkpoint
-import com.todesking.scalanb.cache.CacheFS
 import com.todesking.scalanb.cache.DepID
 
 object Runner {
@@ -111,15 +110,15 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
 
-    val logCache = { (cfs: CacheFS, id: DepID, cached: Boolean) =>
+    val logCache = { (id: DepID, loc: String, cached: Boolean) =>
       if (cached) {
-        println(s"Load from cache: ${cfs.uri(id)}")
+        println(s"Load from cache: ${loc}")
       } else {
-        println(s"Uncached. Save to: ${cfs.uri(id)}")
+        println(s"Uncached. Save to: ${loc}")
       }
     }
     val newCP = { state: NBState =>
-      new Checkpoint(new CacheFS(parsedArgs.fsForCache, state.className), logCache)
+      new Checkpoint(parsedArgs.fsForCache.namespace(state.className), logCache)
     }
 
     val ctx = new NBContext(notebookName, notebookClassName, listeners, newCP)

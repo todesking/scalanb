@@ -1,17 +1,17 @@
 package com.todesking.scalanb.cache
 
+import com.todesking.scalanb.io.FileSystem
 import scala.reflect.ClassTag
 
 trait Cacheable[A] { self =>
-  def save(fs: CacheFS, d: Dep[A]): Unit
-  def load(fs: CacheFS, id: DepID): Option[Dep[A]]
+  def save(fs: FileSystem, name: String)(value: A): Unit
+  def load(fs: FileSystem, name: String): Option[A]
 
   def transform[B](push: B => A)(pull: A => B): Cacheable[B] = new Cacheable[B] {
-    override def save(fs: CacheFS, d: Dep[B]) = {
-      self.save(fs, d.mapUNSAFE(push))
-    }
-    override def load(fs: CacheFS, id: DepID) =
-      self.load(fs, id).map(_.mapUNSAFE(pull))
+    override def save(fs: FileSystem, name: String)(value: B) =
+      self.save(fs, name)(push(value))
+    override def load(fs: FileSystem, name: String) =
+      self.load(fs, name).map(pull)
   }
 }
 
@@ -22,26 +22,22 @@ trait CacheableLowPriority {
     ofSeqCacheable[A].transform[Array[A]](_.toSeq)(_.toArray)
 
   implicit def ofSeqCacheable[A: Cacheable]: Cacheable[Seq[A]] = new Cacheable[Seq[A]] {
-    override def save(fs: CacheFS, d: Dep[Seq[A]]) = {
-      val a = d.unwrapUNSAFE
-      val ids = Decomposable.ofSeq[A].ids(d.id, a.size)
-      cacheable[Int].save(fs, Dep.buildUNSAFE(d.id.item("size"), a.size))
-      ids.zip(a).foreach {
-        case (id, v) =>
-          cacheable[A].save(fs, Dep.buildUNSAFE(id, v))
+    override def save(fs: FileSystem, name: String)(value: Seq[A]) = {
+      val nfs = fs.namespace(name)
+      cacheable[Int].save(nfs, "size")(value.size)
+      value.zipWithIndex.foreach {
+        case (v, i) =>
+          cacheable[A].save(nfs, s"item_$i")(v)
       }
     }
-    override def load(fs: CacheFS, id: DepID) = {
-      cacheable[Int].load(fs, id.item("size")).map(_.unwrapUNSAFE).flatMap { size =>
-        val cached: Seq[Option[Dep[A]]] =
+    override def load(fs: FileSystem, name: String) = {
+      val nfs = fs.namespace(name)
+      cacheable[Int].load(nfs, "size").flatMap { size =>
+        val cached: Seq[Option[A]] =
           (0 until size).map { i =>
-            cacheable[A].load(fs, id.item(s"$i"))
+            cacheable[A].load(nfs, s"item_$i")
           }
-        if (cached.exists(_.isEmpty)) {
-          None
-        } else {
-          Some(Dep.buildUNSAFE(id, cached.map(_.get.unwrapUNSAFE)))
-        }
+        Some(cached.map(_.get))
       }
     }
   }
@@ -50,19 +46,21 @@ trait CacheableLowPriority {
 object Cacheable extends CacheableLowPriority {
   import java.io.{ ObjectInputStream, ObjectOutputStream }
   def byJavaSerialization[A](doPut: (A, ObjectOutputStream) => Unit)(doGet: ObjectInputStream => A): Cacheable[A] = new Cacheable[A] {
-    override def save(fs: CacheFS, d: Dep[A]) = {
+    override def save(fs: FileSystem, name: String)(value: A) = {
       val buf = new java.io.ByteArrayOutputStream()
       val os = new java.io.ObjectOutputStream(buf)
-      doPut(d.unwrapUNSAFE, os)
+      doPut(value, os)
       os.close()
       val data = buf.toByteArray
-      fs.writeBytes(d.id)(data)
+      fs.writeBytes(name, data)
     }
 
-    override def load(fs: CacheFS, id: DepID) = {
-      fs.readBytes(id).map { data =>
+    override def load(fs: FileSystem, name: String) = {
+      if (!fs.exists(name)) None
+      else {
+        val data = fs.readBytes(name)
         val is = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(data))
-        Dep.buildUNSAFE(id, doGet(is))
+        Some(doGet(is))
       }
     }
   }
@@ -79,34 +77,34 @@ object Cacheable extends CacheableLowPriority {
     ofSerializable[String]
 
   implicit def ofTuple2[A1: Cacheable, A2: Cacheable]: Cacheable[(A1, A2)] = new Cacheable[(A1, A2)] {
-    override def save(fs: CacheFS, d: Dep[(A1, A2)]) = {
-      val (a1, a2) = d.decompose
-      implicitly[Cacheable[A1]].save(fs, a1)
-      implicitly[Cacheable[A2]].save(fs, a2)
+    override def save(fs: FileSystem, name: String)(value: (A1, A2)) = {
+      val nfs = fs.namespace(name)
+      cacheable[A1].save(nfs, "_1")(value._1)
+      cacheable[A2].save(nfs, "_2")(value._2)
     }
-    override def load(fs: CacheFS, id: DepID) = {
-      val (i1, i2) = Decomposable.ofTuple2[A1, A2].ids(id)
+    override def load(fs: FileSystem, name: String) = {
+      val nfs = fs.namespace(name)
       for {
-        a1 <- implicitly[Cacheable[A1]].load(fs, i1)
-        a2 <- implicitly[Cacheable[A2]].load(fs, i2)
-      } yield Dep.buildUNSAFE(id, (a1.unwrapUNSAFE, a2.unwrapUNSAFE))
+        a1 <- cacheable[A1].load(nfs, "_1")
+        a2 <- cacheable[A2].load(nfs, "_2")
+      } yield (a1, a2)
     }
   }
 
   implicit def ofTuple3[A1: Cacheable, A2: Cacheable, A3: Cacheable]: Cacheable[(A1, A2, A3)] = new Cacheable[(A1, A2, A3)] {
-    override def save(fs: CacheFS, d: Dep[(A1, A2, A3)]) = {
-      val (a1, a2, a3) = d.decompose
-      implicitly[Cacheable[A1]].save(fs, a1)
-      implicitly[Cacheable[A2]].save(fs, a2)
-      implicitly[Cacheable[A3]].save(fs, a3)
+    override def save(fs: FileSystem, name: String)(value: (A1, A2, A3)) = {
+      val nfs = fs.namespace(name)
+      cacheable[A1].save(nfs, "_1")(value._1)
+      cacheable[A2].save(nfs, "_2")(value._2)
+      cacheable[A3].save(nfs, "_3")(value._3)
     }
-    override def load(fs: CacheFS, id: DepID) = {
-      val (i1, i2, i3) = Decomposable.ofTuple3[A1, A2, A3].ids(id)
+    override def load(fs: FileSystem, name: String) = {
+      val nfs = fs.namespace(name)
       for {
-        a1 <- implicitly[Cacheable[A1]].load(fs, i1)
-        a2 <- implicitly[Cacheable[A2]].load(fs, i2)
-        a3 <- implicitly[Cacheable[A3]].load(fs, i3)
-      } yield Dep.buildUNSAFE(id, (a1.unwrapUNSAFE, a2.unwrapUNSAFE, a3.unwrapUNSAFE))
+        a1 <- cacheable[A1].load(nfs, "_1")
+        a2 <- cacheable[A2].load(nfs, "_2")
+        a3 <- cacheable[A3].load(nfs, "_3")
+      } yield (a1, a2, a3)
     }
   }
 
