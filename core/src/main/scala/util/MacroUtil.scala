@@ -96,22 +96,7 @@ object MacroUtil {
       val (start0, end) = range(t)
       val st = start.fold(start0) { s => math.min(start0, s) }
       if (st == Int.MaxValue) "<source unavailable>"
-      else {
-        val src = clean(content(t).slice(st, end + 1).mkString(""))
-        import c.universe._
-        t match {
-          case ValDef(mod, name, tpt, rhs) =>
-            // Hack: Sometimes range of "val a = b" contains only "a = b"
-            val re = """^(?:\w+\s+)*val\s.*""".r
-            src match {
-              case `re`() => src
-              case _ =>
-                // TODO: support mods
-                s"val $src"
-            }
-          case _ => src
-        }
-      }
+      else clean(content(t).slice(st, end + 1).mkString(""))
     }
   }
 }
