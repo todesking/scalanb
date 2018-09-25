@@ -10,6 +10,7 @@ import scala.collection.JavaConverters._
 trait FileSystem {
   val protocol: String
   val basePath: String
+  val baseUri: String
 
   def prepare(): Unit
 

@@ -16,7 +16,10 @@ class LocalFileSystemFactory extends FileSystemFactory {
 }
 
 class LocalFileSystem(override val basePath: String) extends FileSystem {
+  require(basePath.startsWith("/"))
   private[this] val base = Paths.get(basePath)
+
+  override val baseUri = s"file://$basePath"
 
   private[this] def prepareWrite(path: String): Unit = {
     val _ = Files.createDirectories(base.resolve(path).getParent)

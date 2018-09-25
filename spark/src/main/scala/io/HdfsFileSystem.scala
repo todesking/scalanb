@@ -17,6 +17,7 @@ class HdfsFileSystemFactory extends FileSystemFactory {
   }
 }
 
+// basePath: "/abs/path" or "host(:port)?/abs/path" or "protocol://host?/abs/path"
 class HdfsFileSystem(val basePath: String) extends FileSystem {
   private[this] val fs = HDFS.fs
   private[this] val base = new Path(basePath)
@@ -27,6 +28,11 @@ class HdfsFileSystem(val basePath: String) extends FileSystem {
     case `protocolRe`(p) => p
     case _ => "hdfs"
   }
+  override val baseUri = basePath match {
+    case `protocolRe`(_) => basePath
+    case _ => s"$protocol://$basePath"
+  }
+
   override def prepare() = {}
 
   override def newInputStream(path: String): InputStream =
