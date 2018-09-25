@@ -56,11 +56,11 @@ object Cacheable extends CacheableLowPriority {
       doPut(d.unwrapUNSAFE, os)
       os.close()
       val data = buf.toByteArray
-      fs.write(d.id, data)
+      fs.writeBytes(d.id)(data)
     }
 
     override def load(fs: CacheFS, id: DepID) = {
-      fs.read(id).map { data =>
+      fs.readBytes(id).map { data =>
         val is = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(data))
         Dep.buildUNSAFE(id, doGet(is))
       }

@@ -5,14 +5,14 @@ import com.todesking.scalanb.cache.{ CacheFS, DepID, Checkpoint, Dep, Cacheable,
 class CacheTest extends org.scalatest.FunSpec {
   class MemoryFS extends CacheFS(null, "test") {
     val dbg = false
-    var cache = scala.collection.mutable.Map.empty[DepID, Array[Byte]]
-    override def write(id: DepID, data: Array[Byte]) = {
-      if (dbg) println(s"Write: $id")
-      cache(id) = data
+    var cache = scala.collection.mutable.Map.empty[(DepID, Seq[String]), Array[Byte]]
+    override def writeBytes(id: DepID, parts: String*)(data: Array[Byte]) = {
+      if (dbg) println(s"Write: $id-${parts.mkString("/")}")
+      cache((id, parts)) = data
     }
-    override def read(id: DepID) = {
-      if (dbg) println(s"Read: $id")
-      cache.get(id)
+    override def readBytes(id: DepID, parts: String*) = {
+      if (dbg) println(s"Read: $id-${parts.mkString("/")}")
+      cache.get((id, parts))
     }
   }
 
@@ -52,9 +52,9 @@ class CacheTest extends org.scalatest.FunSpec {
             count += 1
             x + y
         }
-        assert(!fs.cache.contains(x.id))
-        assert(fs.cache.contains(z.id))
-        assert(fs.cache.contains(w.id))
+        assert(!fs.cache.contains((x.id, Seq())))
+        assert(fs.cache.contains((z.id, Seq())))
+        assert(fs.cache.contains((w.id, Seq())))
 
         w.unwrapUNSAFE
       }

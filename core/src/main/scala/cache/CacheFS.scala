@@ -10,14 +10,19 @@ class CacheFS(val underlying: FileSystem, val className: String) {
   def uri(id: DepID, parts: String*): String =
     s"${underlying.baseUri}/${localPath(id, parts: _*)}"
 
-  def write(id: DepID, data: Array[Byte]): Unit =
-    underlying.writeBytes(localPath(id), data)
+  def writeBytes(id: DepID, parts: String*)(data: Array[Byte]): Unit =
+    underlying.writeBytes(localPath(id, parts: _*), data)
 
-  def read(id: DepID): Option[Array[Byte]] = {
+  def readBytes(id: DepID, parts: String*): Option[Array[Byte]] = {
     val p = localPath(id)
     if (underlying.exists(p)) Some(underlying.readBytes(p))
     else None
   }
+
+  def writeString(id: DepID, parts: String*)(data: String): Unit =
+    writeBytes(id, parts: _*)(data.getBytes)
+  def readString(id: DepID, parts: String*) =
+    readBytes(id, parts: _*).map { data => new String(data) }
 
   def exists(id: DepID): Boolean =
     underlying.exists(localPath(id))
