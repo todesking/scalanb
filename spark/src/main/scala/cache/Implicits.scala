@@ -26,15 +26,14 @@ trait Implicits {
 
     override def save(fs: CacheFS, d: Dep[DataFrame]) = {
       val df = d.unwrapUNSAFE
-      spark.createDataset(serializeSchema(df.schema).split("\n").toSeq)
-        .write.text(fs.uri(d.id, "schema.json"))
+      fs.underlying.writeString(fs.localPath(d.id, "schema.json"), serializeSchema(df.schema))
       df.cache().write.orc(fs.uri(d.id, "data.orc"))
     }
     override def load(fs: CacheFS, id: DepID) = {
       val lp = fs.localPath(id)
       if (!fs.exists(id)) None
       else {
-        val schema = deserializeSchema(spark.read.text(fs.uri(id, "schema.json")).as[String].collect().mkString("\n"))
+        val schema = deserializeSchema(fs.underlying.readString(fs.localPath(id, "schema.json")))
         Some(Dep.buildUNSAFE(id, spark.read.schema(schema).orc(fs.uri(id, "data.orc"))))
       }
     }
