@@ -33,7 +33,7 @@ object Checkpoint {
     import c.universe.Quasiquote
     import c.universe.Tree
 
-    val util = MacroUtil.bind[c.type](c)
+    val util = MacroUtil.bind(c)
 
     val valName = util.enclosingOwnerName
 

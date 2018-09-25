@@ -18,7 +18,7 @@ object Notebook {
     import context.universe.Tree
     import context.universe.Quasiquote
 
-    val util = MacroUtil.bind[context.type](context)
+    val util = MacroUtil.bind(context)
 
     def makeMain(tpname: TypeName, nbName: String, nbClassName: Tree): Tree = {
       q"""

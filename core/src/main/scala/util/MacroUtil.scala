@@ -3,7 +3,7 @@ package com.todesking.scalanb.util
 import scala.reflect.macros.blackbox.Context
 
 object MacroUtil {
-  def bind[C <: Context](c: C): Impl[C] = new Impl[C](c)
+  def bind(c: Context): Impl[c.type] = new Impl[c.type](c)
 
   private[this] var treeToSource = Map.empty[String, String]
   private[this] val debug = false

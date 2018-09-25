@@ -18,7 +18,7 @@ object Module {
     import c.universe.Tree
     import c.universe.Quasiquote
 
-    val util = MacroUtil.bind[c.type](c)
+    val util = MacroUtil.bind(c)
 
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {

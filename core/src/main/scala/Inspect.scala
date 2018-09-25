@@ -20,7 +20,7 @@ object Inspect {
 
   def sourcesImpl(c: Context)(x: c.Expr[Any]): c.Expr[Seq[String]] = {
     import c.universe._
-    val util = MacroUtil.bind[c.type](c)
+    val util = MacroUtil.bind(c)
 
     val srcs =
       (x.tree match {
@@ -40,7 +40,7 @@ object Inspect {
     import c.universe.Tree
     import c.universe.Quasiquote
 
-    val util = MacroUtil.bind[c.type](c)
+    val util = MacroUtil.bind(c)
 
     def transform[A: WeakTypeTag](trees: Seq[Tree], discardAllValues: Boolean): Expr[A] = {
       val newBody = processStats(trees, discardAllValues)

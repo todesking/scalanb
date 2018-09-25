@@ -28,7 +28,7 @@ object Dep {
     import c.universe.Expr
     import c.universe.WeakTypeTag
     import c.universe.Quasiquote
-    val util = MacroUtil.bind[c.type](c)
+    val util = MacroUtil.bind(c)
 
     def mapImpl[A, B: WeakTypeTag](f: Expr[A => B]): Expr[Dep[B]] = {
       val src = util.stringLiteral(util.source(f.tree))
