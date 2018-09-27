@@ -17,13 +17,14 @@ object EventListener {
     case class Display(value: Value) extends Content
   }
   case class ExecLog(
+    path: Seq[String],
     code: String,
     startAt: Long,
     contents: Seq[Content]) {
     def content(c: Content) = copy(contents = contents :+ c)
   }
   object ExecLog {
-    def apply(code: String, startAt: Long): ExecLog = ExecLog(code, startAt, Seq())
+    def apply(path: Seq[String], code: String, startAt: Long): ExecLog = ExecLog(path, code, startAt, Seq())
   }
 
   def makeExecutionTime(millis: Long): Value = {
@@ -44,35 +45,32 @@ object EventListener {
       this.cells = this.cells :+ c
     }
 
-    override def event(state: NBState, e: Event) = e match {
+    override def event(state: NBState, event: Event) = event match {
       case Event.WholeCode(src) =>
       case Event.Expr(value) =>
-        flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)), state)
+        flush(Some(Output.ExecuteResult(value.data, Map(), executionCount)), state.config)
       case Event.Error(t, format) =>
-        flush(Some(format.apply(t)), state)
+        flush(Some(format.apply(t)), state.config)
       case Event.Quiet() =>
         this.currentExecLog = None
       case Event.Markdown(src) =>
-        flush(None, state)
+        flush(None, state.config)
         addCell(Cell.Markdown(src))
-      case Event.Code(s) =>
+      case Event.Code(src) =>
         currentExecLog.foreach { el =>
           val duration = System.currentTimeMillis() - el.startAt
           if (duration > state.config.showTimeMillis) {
             // First, flush previous exec logs
             this.currentExecLog = None
-            flush(None, state)
+            flush(None, state.config)
             // Then flush current one
             this.currentExecLog = Some(el)
-            flush(None, state)
+            flush(None, state.config)
           } else {
             this.execLogs = this.execLogs :+ el
           }
         }
-        val src =
-          if (state.namePath.isEmpty) s
-          else s"// In ${(state.namePath.tail :+ state.name).mkString(" -> ")}\n" + s
-        this.currentExecLog = Some(ExecLog(src, System.currentTimeMillis()))
+        this.currentExecLog = Some(ExecLog(state.namePath :+ state.name, src, System.currentTimeMillis()))
       case Event.StdOut(s) =>
         this.currentExecLog = currentExecLog.map(_.content(Content.StdOut(s)))
       case Event.StdErr(s) =>
@@ -80,16 +78,15 @@ object EventListener {
       case Event.Display(v) =>
         this.currentExecLog = currentExecLog.map(_.content(Content.Display(v)))
       case Event.Finish() =>
-        flush(None, state)
+        flush(None, state.config)
       case Event.EnterModule() =>
       case Event.ExitModule(_, _) =>
     }
 
     private[this] def flushCell(els: Seq[ExecLog], res: Seq[Output]): Unit = {
       def nl(s: String) = if (s.nonEmpty && s.last != '\n') s + "\n" else s
-      var outputs = Seq.empty[Output]
-      els.foreach { el =>
-        outputs = outputs ++ el.contents.map {
+      var outputs = els.flatMap { el =>
+        el.contents.map {
           case Content.StdOut(s) =>
             Output.Stream("stdout", nl(s))
           case Content.StdErr(s) =>
@@ -97,45 +94,57 @@ object EventListener {
           case Content.Display(v) =>
             Output.DisplayData(v.data, Map())
         }
-      }
-      res.foreach { r =>
-        outputs = outputs :+ r
-      }
+      } ++ res
       if (els.nonEmpty) {
+        val header =
+          if (els.head.path.size <= 1) ""
+          else s"// In ${els.head.path.tail.mkString(" -> ")}\n"
         addCell(Cell.Code(
           executionCount = Some(executionCount),
-          source = els.map(_.code).mkString("\n"),
+          source = header + els.map(_.code).mkString("\n"),
           metadata = Cell.CodeMetadata(
             collapsed = false, autoscroll = false),
           outputs = outputs))
-        def extract(data: Map[String, json.JsValue]) =
-          data.zipWithIndex.collect {
-            case (("text/csv", json.JsString(s)), n) =>
-              (s"out-$executionCount-$n.csv", "text/csv", s)
-          }
-        outputs.flatMap {
-          case Output.ExecuteResult(data, metadata, count) =>
-            extract(data)
-          case Output.DisplayData(data, metadata) =>
-            extract(data)
-          case _ => Seq()
-        }.foreach {
-          case (name, mime, content) =>
-            // TODO: html escape
-            addCell(Cell.Markdown(
-              s"Attachment: [$name](attachment:$name)",
-              Map(name -> Map(mime -> json.JsString(java.util.Base64.getEncoder.encodeToString(content.getBytes))))))
-        }
         this._executionCount += 1
+      }
+      def extract(data: Map[String, json.JsValue]) =
+        data.zipWithIndex.collect {
+          case (("text/csv", json.JsString(s)), n) =>
+            (s"out-$executionCount-$n.csv", "text/csv", s)
+        }
+      outputs.flatMap {
+        case Output.ExecuteResult(data, metadata, count) =>
+          extract(data)
+        case Output.DisplayData(data, metadata) =>
+          extract(data)
+        case _ => Seq()
+      }.foreach {
+        case (name, mime, content) =>
+          // TODO: html escape
+          addCell(Cell.Markdown(
+            s"Attachment: [$name](attachment:$name)",
+            Map(name -> Map(mime -> json.JsString(java.util.Base64.getEncoder.encodeToString(content.getBytes))))))
       }
     }
 
-    def flush(res: Option[Output], state: NBState) = {
-      flushCell(execLogs, Seq())
+    def flush(res: Option[Output], config: NBConfig) = {
+      def split(els: Seq[ExecLog]): Seq[Seq[ExecLog]] = {
+        if (els.isEmpty) Seq()
+        else {
+          val (_, last, acc) =
+            els.tail.foldLeft((els.head.path, Seq(els.head), Seq.empty[Seq[ExecLog]])) {
+              case ((path, els, acc), el) =>
+                if (el.path == path) (path, els :+ el, acc)
+                else (el.path, Seq(el), acc :+ els)
+            }
+          acc :+ last
+        }
+      }
+      split(execLogs).foreach(flushCell(_, Seq()))
       currentExecLog.foreach { el =>
         val duration = System.currentTimeMillis - el.startAt
         val outs =
-          if (duration > state.config.showTimeMillis)
+          if (duration > config.showTimeMillis)
             Seq(ipynb.Output.DisplayData(
               makeExecutionTime(duration).data, Map())) ++ res
           else
@@ -147,7 +156,7 @@ object EventListener {
     }
 
     def build(state: NBState) = {
-      flush(None, state)
+      flush(None, state.config)
       ipynb.Notebook(
         metadata = Map("language_info" -> json.JsObject(Map("name" -> json.JsString("scala")))),
         nbformat = 4,
