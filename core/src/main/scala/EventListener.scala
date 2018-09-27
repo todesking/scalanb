@@ -59,7 +59,9 @@ object EventListener {
       case Event.Code(src) =>
         currentExecLog.foreach { el =>
           val duration = System.currentTimeMillis() - el.startAt
-          if (duration > state.config.showTimeMillis) {
+          val longExecution = duration > state.config.showTimeMillis
+          val hasContent = el.contents.nonEmpty
+          if (longExecution || hasContent) {
             // First, flush previous exec logs
             this.currentExecLog = None
             flush(None, state.config)
