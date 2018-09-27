@@ -8,8 +8,7 @@ import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
 
-// eventHandler: (id, cached) => Unit
-class Checkpoint(val fs: FileSystem, eventHandler: (DepID, String, Boolean) => Unit = { (_, _, _) => }) {
+class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEventListener.Null) {
   def source[R](f: R): Dep[R] = macro Checkpoint.Impl.nocache0[R]
   def join[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.nocache1[A, R]
   def cache0[R: Cacheable](f: R): Dep[R] = macro Checkpoint.Impl.cache0[R]
@@ -20,7 +19,8 @@ class Checkpoint(val fs: FileSystem, eventHandler: (DepID, String, Boolean) => U
   def cacheImpl[A](c: Cacheable[A], id: DepID, value: => A): Dep[A] = {
     val nfs = fs.namespace(Checkpoint.pathString(id))
     val cached = c.load(nfs, "data")
-    eventHandler(id, nfs.baseUri, cached.nonEmpty)
+    if (cached.isEmpty) eventListener.miss(fs, id)
+    else eventListener.hit(fs, id)
     cached.map { v =>
       Dep.buildUNSAFE(id, v)
     } getOrElse {

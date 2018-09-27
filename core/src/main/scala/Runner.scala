@@ -110,11 +110,12 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
 
-    val logCache = { (id: DepID, loc: String, cached: Boolean) =>
-      if (cached) {
-        println(s"Load from cache: ${loc}")
-      } else {
-        println(s"Uncached. Save to: ${loc}")
+    val logCache = new cache.CacheEventListener {
+      override def hit(fs: FileSystem, id: DepID) = {
+        println(s"Load from cache: ${id.shortString}")
+      }
+      override def miss(fs: FileSystem, id: DepID) = {
+        println(s"Uncached: ${id.shortString}")
       }
     }
 
