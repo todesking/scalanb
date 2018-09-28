@@ -1,6 +1,6 @@
 package com.todesking.scalanb.cache
 
-trait Dependable[A, B] {
+trait Dependable[-A, +B] {
   def apply(a: A): Dep[B]
 }
 object Dependable {

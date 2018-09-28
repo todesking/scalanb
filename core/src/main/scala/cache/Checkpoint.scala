@@ -68,8 +68,12 @@ object Checkpoint {
 
     def cache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[A => R])(ev: Expr[Cacheable[R]]): Expr[Dep[R]] = {
       def src = f.tree.toString
-      val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $args.ids)"
-      Expr[Dep[R]](q"${c.prefix}.cacheImpl($ev, $id, $f($args.value))")
+      val id = q""
+      Expr[Dep[R]](q"""
+        val args = $args
+        val id = _root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $args.ids)
+        ${c.prefix}.cacheImpl($ev, id, $f(args.value))
+      """)
     }
   }
 }

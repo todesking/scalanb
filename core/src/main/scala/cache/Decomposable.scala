@@ -1,6 +1,6 @@
 package com.todesking.scalanb.cache
 
-trait Decomposable[A, B] {
+trait Decomposable[-A, +B] {
   def apply(a: Dep[A]): B
 }
 object Decomposable {

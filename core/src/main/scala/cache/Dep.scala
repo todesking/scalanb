@@ -7,7 +7,7 @@ import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
 
-class Dep[A] private (val id: DepID, val unwrapUNSAFE: A) {
+class Dep[+A] private (val id: DepID, val unwrapUNSAFE: A) {
   def decompose[B](implicit ev: Decomposable[A, B]): B = ev(this)
 
   def mapUNSAFE[B](f: A => B): Dep[B] = Dep.buildUNSAFE(id, f(unwrapUNSAFE))
