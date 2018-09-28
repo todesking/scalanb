@@ -31,5 +31,8 @@ object Value {
 
   def csv(s: String): Value =
     apply("text/csv", JsString(s))
+
+  def binary(mime: String, data: Array[Byte]): Value =
+    apply(mime, JsString(java.util.Base64.getEncoder.encodeToString(data)))
 }
 
