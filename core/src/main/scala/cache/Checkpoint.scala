@@ -11,10 +11,23 @@ import scala.language.experimental.macros
 class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEventListener.Null) {
   def source[R](f: R): Dep[R] = macro Checkpoint.Impl.nocache0[R]
   def join[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.nocache1[A, R]
+  def unwrap[A](args: DepArg[A])(f: A => Unit): Unit = f(args.value)
+
   def cache0[R: Cacheable: TypeTag](f: R): Dep[R] = macro Checkpoint.Impl.cache0[R]
   def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.cache1[A, R]
 
-  def unwrap[A](args: DepArg[A])(f: A => Unit): Unit = f(args.value)
+  def list(): Seq[MetaData] = {
+    fs.list("").flatMap { name =>
+      fs.list(name).flatMap { hash =>
+        val path = s"$name/$hash/cache.json"
+        if (fs.exists(path)) {
+          Some(MetaData.fromJson(fs.readString(path)))
+        } else {
+          None
+        }
+      }
+    }
+  }
 
   def cacheImpl[A](c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
     val nfs = fs.namespace(id.pathString)
