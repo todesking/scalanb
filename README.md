@@ -163,3 +163,37 @@ Cache location could specified by `--cache` option. Default is `~/.scalanb/cache
   * `{hex digest}
     * `cache.json`: metadata(TODO)
     * `data`: Serialized data(Format is type specific)
+
+## Plot using evilplot
+
+To integrate [EvilPlot](https://cibotech.github.io/evilplot/), use this snippet:
+
+```scala
+import com.cibo.evilplot.plot
+import plot.aesthetics.DefaultTheme._
+
+implicit val plotFormat = nb.Format[plot.Plot] { plot =>
+  val img = plot.render().asBufferedImage
+  val buf = new java.io.ByteArrayOutputStream()
+  val png = javax.imageio.ImageIO.write(img, "png", buf)
+  buf.close()
+  nb.Value.binary("image/png", buf.toByteArray)
+}
+```
+
+And you can embed plot in notebook:
+
+```
+import com.cibo.evilplot.numeric.Point
+
+val data = (0.0 until 1.0 by 0.02).map { v =>
+  (v, v * scala.util.Random.nextDouble)
+}.toSeq
+
+plot.LinePlot(data.map { case (x, y) => Point(x, y) })
+  .xAxis()
+  .yAxis()
+  .frame()
+  .xLabel("x")
+  .yLabel("y")
+```
