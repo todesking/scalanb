@@ -45,6 +45,9 @@ trait CacheableLowPriority {
 
 object Cacheable extends CacheableLowPriority {
   import java.io.{ ObjectInputStream, ObjectOutputStream }
+
+  def of[A: Cacheable]: Cacheable[A] = implicitly[Cacheable[A]]
+
   def byJavaSerialization[A](doPut: (A, ObjectOutputStream) => Unit)(doGet: ObjectInputStream => A): Cacheable[A] = new Cacheable[A] {
     override def save(fs: FileSystem, name: String)(value: A) = {
       val buf = new java.io.ByteArrayOutputStream()

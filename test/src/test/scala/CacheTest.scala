@@ -1,7 +1,8 @@
 package test
 
-import com.todesking.scalanb.cache.{ DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable }
+import com.todesking.scalanb.cache.{ DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable, MetaData }
 import com.todesking.scalanb.io.{ FileSystem, LocalFileSystem }
+import scala.reflect.runtime.universe.TypeTag
 
 class CacheTest extends org.scalatest.FunSpec {
   import test.io.FileSystemTestUtil.withTmpDir
@@ -9,7 +10,7 @@ class CacheTest extends org.scalatest.FunSpec {
   def withFS(f: FileSystem => Unit): Unit =
     withTmpDir { tmp => f(new LocalFileSystem(tmp.toString)) }
 
-  def assertCacheable[A: Cacheable](a: A): Unit = withFS { fs =>
+  def assertCacheable[A: Cacheable: TypeTag](a: A): Unit = withFS { fs =>
     val cp = new Checkpoint(fs)
     def eq(a: A): Any = a match {
       case x: Array[_] => x.toSeq
@@ -36,9 +37,9 @@ class CacheTest extends org.scalatest.FunSpec {
             count += 1
             x + y
         }
-        assert(!fs.exists(Checkpoint.pathString(x.id)))
-        assert(fs.exists(Checkpoint.pathString(z.id)))
-        assert(fs.exists(Checkpoint.pathString(w.id)))
+        assert(!fs.exists(x.id.pathString))
+        assert(fs.exists(z.id.pathString))
+        assert(fs.exists(w.id.pathString))
 
         w.unwrapUNSAFE
       }
@@ -47,6 +48,18 @@ class CacheTest extends org.scalatest.FunSpec {
       assert(count == 1)
       assert(exec() == 101)
       assert(count == 1)
+    })
+    it("should save metadata")(withFS { fs =>
+      val cp = new Checkpoint(fs)
+      val a = cp.cache0 { 1 }
+      val (b, c) = a.map { a => (a, a + 1) }.decompose
+      val d = cp.cache((b, c)) { case (b, c) => b + c }
+      d.foreach { d => assert(d == 3) }
+
+      val nfs = fs.namespace(d.id.pathString)
+      assert(nfs.exists("cache.json"))
+      val meta = MetaData.fromJson(nfs.readString("cache.json"))
+      assert(meta.id == d.id)
     })
   }
   describe("Decomposable") {
