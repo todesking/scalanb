@@ -10,7 +10,7 @@ import com.todesking.scalanb.io.FileSystemFactory
 import com.todesking.scalanb.spark.hdfs.HDFS
 
 class HdfsFileSystemFactory extends FileSystemFactory {
-  override val homePath = HDFS.fs.getHomeDirectory.toString
+  override lazy val homePath = HDFS.fs.getHomeDirectory.toString
   override val name = "hdfs"
   override def newFS(path: String) = {
     new HdfsFileSystem(path)
