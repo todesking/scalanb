@@ -16,19 +16,6 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
   def cache0[R: Cacheable: TypeTag](f: R): Dep[R] = macro Checkpoint.Impl.cache0[R]
   def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.cache1[A, R]
 
-  def list(): Seq[MetaData] = {
-    fs.list().flatMap { name =>
-      fs.list(name).flatMap { hash =>
-        val path = s"$name/$hash/cache.json"
-        if (fs.exists(path)) {
-          Some(MetaData.fromJson(fs.readString(path)))
-        } else {
-          None
-        }
-      }
-    }
-  }
-
   def cacheImpl[A](c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
     val nfs = fs.namespace(id.pathString)
     val cached = c.load(nfs, "data")
@@ -53,6 +40,22 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
     fs.writeString("cache.json", meta.toJson)
     v
   }
+
+  def list(fs: FileSystem): Seq[MetaData] = {
+    fs.list().flatMap { ns =>
+      fs.list(ns).flatMap { name =>
+        fs.list(s"$ns/$name").flatMap { ver =>
+          val path = s"$ns/$name/$ver/cache.json"
+          if (fs.exists(path)) {
+            Some(MetaData.fromJson(fs.readString(path)))
+          } else {
+            None
+          }
+        }
+      }
+    }
+  }
+
 }
 
 object Checkpoint {
