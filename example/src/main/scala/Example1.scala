@@ -34,6 +34,8 @@ class Example1 {
 
   Seq(1, 2, 3, 4, 5)
 
+  Map("a" -> 1, "b" -> 2)
+
   println(s"a = $a")
   println("hello")
 

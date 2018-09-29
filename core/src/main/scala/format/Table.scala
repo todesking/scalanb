@@ -3,19 +3,54 @@ package com.todesking.scalanb.format
 import com.todesking.scalanb.Value
 
 object Table {
-  case class Col(content: String, rowspan: Int = 1, header: Boolean = false)
+  sealed abstract class Col {
+    def text: String
+  }
+  object Col {
+    def apply(text: String, header: Boolean = false) = Filled(text, header)
+    case class Filled(override val text: String, header: Boolean) extends Col
+    case object Empty extends Col {
+      override val text = ""
+    }
+  }
   private[this] def renderHtml(rows: Seq[Seq[Col]]): String = {
+    // spans((i, j)) = (rowspan_ij, colspan_ij)
+    val spans: Map[(Int, Int), (Int, Int)] =
+      rows.zipWithIndex.flatMap {
+        case (row, ri) =>
+          row.zipWithIndex.flatMap {
+            case (Col.Filled(_, _), ci) =>
+              var rj = ri + 1
+              while (rj < rows.size && rows(rj)(ci) == Col.Empty) {
+                rj += 1
+              }
+              val rowspan = rj - ri
+
+              var cj = ci + 1
+              while (cj < row.size && rows(ri)(cj) == Col.Empty) {
+                cj += 1
+              }
+              val colspan = cj - ci
+              Some((ri, ci) -> ((rowspan, colspan)))
+            case (Col.Empty, _) => None
+          }
+      }.toMap
     s"""<table style="word-wrap: break-word; font-family: monospace">
     ${
-      rows.map { row =>
-        s"""<tr>${
-          row.map {
-            case Col(content, rowspan, header) =>
-              val td = if (header) "th" else "td"
-              val rs = if (rowspan > 1) s"""rowspan="${h(rowspan)}"""" else ""
-              s"""<$td style="text-align: right" ${rs}>${wbr(h(content))}</$td>"""
-          }.mkString("")
-        }</tr>"""
+      rows.zipWithIndex.map {
+        case (row, ri) =>
+          s"""<tr>${
+            row.zipWithIndex.map {
+              case (Col.Empty, _) =>
+                ""
+              case (Col.Filled(content, header), ci) =>
+                val (rowspan, colspan) = spans((ri, ci))
+                val td = if (header) "th" else "td"
+                val rs = if (rowspan > 1) s"""rowspan="${h(rowspan)}"""" else ""
+                val cs = if (colspan > 1) s"""colspan="${h(colspan)}"""" else ""
+                s"""<$td style="text-align: right" $rs $cs>${wbr(h(content))}</$td>"""
+            }.mkString("")
+          }</tr>"""
       }.mkString("\n")
     }
 </table>"""
@@ -53,27 +88,23 @@ object Table {
     .replaceAll("&amp;", "&amp;<wbr></wbr>")
     .replaceAll("%", "%<wbr></wbr>")
 
-  private[this] def requireTable(colNames: Seq[_], rows: Seq[Seq[_]]) =
-    require(rows.forall { r => r.size == colNames.size })
-
   private[this] def renderText(rows: Seq[Seq[Col]]): String = {
-    // TODO: support rowspan
     if (rows.isEmpty) return ""
     val colSize = rows.head.size
-    val widths = colWidths(rows.map(_.map(_.content)))
+    val widths = colWidths(rows.map(_.map(_.text)))
     rows.map { row =>
-      row.map(_.content).zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
+      row.map(_.text).zip(widths).map { case (s, w) => lpad(s, w) }.mkString(", ")
     }.mkString("\n")
   }
   private[this] def renderCsv(rows: Seq[Seq[Col]]): String = {
     def escape(s: String) = s
       .replaceAll("\"", "\"\"")
     def colString(s: String) = if (s.contains("\"")) s""""${escape(s)}"""" else s
-    rows.map(_.map(_.content)).map(_.map(colString).mkString(",")).mkString("\n")
+    rows.map(_.map(_.text)).map(_.map(colString).mkString(",")).mkString("\n")
   }
 
   def table(colNames: Seq[String], rows: Seq[Seq[String]]): Value = {
-    requireTable(colNames, rows)
+    require(rows.forall { r => r.size == colNames.size })
     table(colNames.map(Col.apply(_, header = true)) +: rows.map(_.map(Col.apply(_))))
   }
 
@@ -93,11 +124,10 @@ object Table {
     renderHtml(
       rows.zipWithIndex.flatMap {
         case (row, i) =>
-          val c = Col(s"${i + 1}", rowspan = colNames.size, header = true)
           row.zip(colNames).zipWithIndex.map {
-            case ((v, k), i) =>
-              if (i == 0) Seq(c, Col(k, header = true), Col(v))
-              else Seq(Col(k, header = true), Col(v))
+            case ((v, k), j) =>
+              val header = if (j == 0) Col(s"${i + 1}", header = true) else Col.Empty
+              Seq(header, Col(k, header = true), Col(v))
           }
       })
   }

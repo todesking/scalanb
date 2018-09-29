@@ -49,6 +49,16 @@ object Format {
         Seq(Col(v.text))
       })
   }
+  implicit def defaultMap[A: Format: WeakTypeTag, B: Format: WeakTypeTag]: Format[Map[A, B]] = apply { xs =>
+    import format.Table.Col
+    val keyName = implicitly[WeakTypeTag[A]].tpe.typeSymbol.name.toString
+    val valueName = implicitly[WeakTypeTag[B]].tpe.typeSymbol.name.toString
+    format.Table.table(
+      Seq(Col(s"Map[$keyName, $valueName]", header = true), Col.Empty) +: xs.toSeq.map {
+        case (k, v) =>
+          Seq(Col(of[A].apply(k).text), Col(of[B].apply(v).text))
+      })
+  }
 }
 
 object ErrorFormat {
