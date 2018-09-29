@@ -29,6 +29,7 @@ trait FileSystem {
   def newInputStream(path: String): InputStream
   def newOutputStream(path: String): OutputStream
 
+  def list(): Seq[String]
   def list(path: String): Seq[String]
   def exists(path: String): Boolean
 

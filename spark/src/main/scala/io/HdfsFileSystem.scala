@@ -63,6 +63,9 @@ class HdfsFileSystem(val basePath: String) extends FileSystem {
     new java.io.BufferedWriter(writer)
   }
 
+  override def list(): Seq[String] = {
+    fs.listStatus(base).map(_.getPath.getName)
+  }
   override def list(path: String): Seq[String] = {
     fs.listStatus(resolve(path)).map(_.getPath.getName)
   }

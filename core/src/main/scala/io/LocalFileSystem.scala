@@ -1,6 +1,7 @@
 package com.todesking.scalanb.io
 
 import java.nio.file.Paths
+import java.nio.file.Path
 import java.nio.file.Files
 import java.io.{ BufferedInputStream, BufferedOutputStream }
 import java.util.stream.Collectors
@@ -41,12 +42,15 @@ class LocalFileSystem(override val basePath: String) extends FileSystem {
     new BufferedOutputStream(Files.newOutputStream(base.resolve(path)))
   }
 
-  override def list(path: String) = {
-    Files.list(base.resolve(path))
+  override def list() =
+    listImpl(base)
+  override def list(path: String) =
+    listImpl(base.resolve(path))
+  private[this] def listImpl(path: Path) =
+    Files.list(path)
       .collect(Collectors.toList())
       .asScala
       .map(_.getFileName.toString)
-  }
 
   override def exists(path: String) =
     Files.exists(base.resolve(path))
