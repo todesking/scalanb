@@ -67,10 +67,10 @@ object Checkpoint {
     val valName = util.enclosingOwnerName
 
     def nocache0[R: WeakTypeTag](f: Expr[R]): Expr[Dep[R]] =
-      nocacheImpl[Unit, R](f.tree.toString, f.tree)
+      nocacheImpl[Unit, R](source(f.tree), f.tree)
 
     def nocache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[R]): Expr[Dep[R]] =
-      nocacheImpl[A, R](f.tree.toString, q"$f($args.value)")
+      nocacheImpl[A, R](source(f.tree), q"$f($args.value)")
 
     val emptySeq = q"_root_.scala.collection.immutable.Seq()"
     val getClassName = q"this.getClass.getName"
@@ -81,19 +81,38 @@ object Checkpoint {
     }
 
     def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {
-      def src = f.tree.toString
+      def src = source(f.tree)
       val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $emptySeq)"
       Expr[Dep[R]](q"${c.prefix}.cacheImpl($ev, $tt, $id, $f)")
     }
 
     def cache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[A => R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {
-      def src = f.tree.toString
+      def src = source(f.tree)
       val id = q""
       Expr[Dep[R]](q"""
         val args = $args
         val id = _root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $args.ids)
         ${c.prefix}.cacheImpl($ev, $tt, id, $f(args.value))
       """)
+    }
+
+    def source(t: Tree): String = {
+      // Hack: If argument has no name, scalac will name it as "x$123".
+      // This name will change for each compile(if other part of source changed),
+      // so I should "normalize" these names.
+      val re = """(x\$\d+)""".r
+      val nameMap =
+        re.findAllMatchIn(t.toString)
+          .map(_.group(0))
+          .foldLeft((Map.empty[String, String], 0)) {
+            case ((m, i), name) =>
+              m.get(name).fold {
+                (m + (name -> s"_x${i}_"), i + 1)
+              } { _ =>
+                (m, i)
+              }
+          }._1
+      re.replaceAllIn(t.toString, { m => nameMap(m.group(0)) })
     }
   }
 }

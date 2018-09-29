@@ -61,6 +61,14 @@ class CacheTest extends org.scalatest.FunSpec {
       val meta = MetaData.fromJson(nfs.readString("cache.json"))
       assert(meta.id == d.id)
     })
+    it("should distinct values via its tree")(withFS { fs =>
+      val cp = new Checkpoint(fs)
+
+      val x = cp.source { 1 }
+      val s1 = x.map(_.toString)
+      val s2 = x.map(_.toString)
+      assert(s1.id == s2.id)
+    })
   }
   describe("Decomposable") {
     it("should decompose dep value")(withFS { fs =>
