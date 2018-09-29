@@ -32,6 +32,8 @@ class Example1 {
 
   moduleValue
 
+  Seq(1, 2, 3, 4, 5)
+
   println(s"a = $a")
   println("hello")
 
