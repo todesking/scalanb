@@ -17,7 +17,7 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
   def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.cache1[A, R]
 
   def list(): Seq[MetaData] = {
-    fs.list("").flatMap { name =>
+    fs.list().flatMap { name =>
       fs.list(name).flatMap { hash =>
         val path = s"$name/$hash/cache.json"
         if (fs.exists(path)) {
