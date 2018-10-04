@@ -16,25 +16,20 @@ trait Cacheable[A] { self =>
 }
 
 trait CacheableLowPriority {
-  protected def cacheable[A: Cacheable]: Cacheable[A] = implicitly[Cacheable[A]]
-
-  implicit def ofArrayCacheable[A: ClassTag](implicit ev: Cacheable[Seq[A]]): Cacheable[Array[A]] =
-    ev.transform[Array[A]](_.toSeq)(_.toArray)
-
   implicit def ofSeqCacheable[A: Cacheable]: Cacheable[Seq[A]] = new Cacheable[Seq[A]] {
     override def save(fs: FileSystem, name: String)(value: Seq[A]) = {
       val nfs = fs.namespace(name)
-      cacheable[Int].save(nfs, "size")(value.size)
+      Cacheable.of[Int].save(nfs, "size")(value.size)
       value.zipWithIndex.foreach {
         case (v, i) =>
-          cacheable[A].save(nfs, s"item_$i")(v)
+          Cacheable.of[A].save(nfs, s"item_$i")(v)
       }
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      val size = cacheable[Int].load(nfs, "size")
+      val size = Cacheable.of[Int].load(nfs, "size")
       (0 until size).map { i =>
-        cacheable[A].load(nfs, s"item_$i")
+        Cacheable.of[A].load(nfs, s"item_$i")
       }
     }
   }
@@ -76,13 +71,13 @@ object Cacheable extends CacheableLowPriority {
   implicit def ofTuple2[A1: Cacheable, A2: Cacheable]: Cacheable[(A1, A2)] = new Cacheable[(A1, A2)] {
     override def save(fs: FileSystem, name: String)(value: (A1, A2)) = {
       val nfs = fs.namespace(name)
-      cacheable[A1].save(nfs, "_1")(value._1)
-      cacheable[A2].save(nfs, "_2")(value._2)
+      of[A1].save(nfs, "_1")(value._1)
+      of[A2].save(nfs, "_2")(value._2)
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      val a1 = cacheable[A1].load(nfs, "_1")
-      val a2 = cacheable[A2].load(nfs, "_2")
+      val a1 = of[A1].load(nfs, "_1")
+      val a2 = of[A2].load(nfs, "_2")
       (a1, a2)
     }
   }
@@ -90,18 +85,21 @@ object Cacheable extends CacheableLowPriority {
   implicit def ofTuple3[A1: Cacheable, A2: Cacheable, A3: Cacheable]: Cacheable[(A1, A2, A3)] = new Cacheable[(A1, A2, A3)] {
     override def save(fs: FileSystem, name: String)(value: (A1, A2, A3)) = {
       val nfs = fs.namespace(name)
-      cacheable[A1].save(nfs, "_1")(value._1)
-      cacheable[A2].save(nfs, "_2")(value._2)
-      cacheable[A3].save(nfs, "_3")(value._3)
+      of[A1].save(nfs, "_1")(value._1)
+      of[A2].save(nfs, "_2")(value._2)
+      of[A3].save(nfs, "_3")(value._3)
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      val a1 = cacheable[A1].load(nfs, "_1")
-      val a2 = cacheable[A2].load(nfs, "_2")
-      val a3 = cacheable[A3].load(nfs, "_3")
+      val a1 = of[A1].load(nfs, "_1")
+      val a2 = of[A2].load(nfs, "_2")
+      val a3 = of[A3].load(nfs, "_3")
       (a1, a2, a3)
     }
   }
+
+  implicit def ofArray[A: ClassTag](implicit ev: Cacheable[Seq[A]]): Cacheable[Array[A]] =
+    ev.transform[Array[A]](_.toSeq)(_.toArray)
 
   private[this] def ofSeqX[A: ClassTag]: Cacheable[Seq[A]] =
     ofSerializable[Array[A]].transform[Seq[A]](_.toArray)(_.toSeq)
