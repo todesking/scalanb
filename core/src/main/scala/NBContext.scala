@@ -8,13 +8,15 @@ case class NBState(
   val className: String,
   val namePath: Seq[String])
 
-class NBContext(_name: String, _className: String, listeners: Seq[EventListener], val checkpoint: Checkpoint) {
+class NBContext(_name: String, _className: String, listeners: Seq[EventListener], newCP: NBContext => Checkpoint) {
   private[this] var _state: NBState = NBState(
     NBConfig.default,
     _name,
     _className,
     Seq())
   def state = _state
+
+  lazy val checkpoint = newCP(this)
 
   def config = state.config
   def setConfig(c: NBConfig): Unit = {

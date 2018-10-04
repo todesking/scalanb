@@ -5,6 +5,8 @@ import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
 import com.todesking.scalanb.cache.Checkpoint
 import com.todesking.scalanb.cache.DepID
+import com.todesking.scalanb.cache.MetaData
+import com.todesking.{ scalanb => nb }
 
 object Runner {
   def run[A](ctx: NBContext)(f: NBContext => A): A = {
@@ -110,33 +112,9 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
 
-    val logCache = new cache.CacheEventListener {
-      private[this] def time(millis: Long): String =
-        format.Time.fromMillis(millis)
+    val newCP = { ctx: NBContext => new Checkpoint(parsedArgs.fsForCache, new CacheLogger(ctx)) }
 
-      override def hit(fs: FileSystem, id: DepID) = {
-        println(s"Cache found: ${id.shortString}")
-      }
-
-      override def loading(fs: FileSystem, id: DepID) = {
-        println(s"Cache loading: ${id.shortString}")
-      }
-      override def loaded(fs: FileSystem, id: DepID, loadDuration: Long) = {
-        println(f"Cache loaded: duration = ${time(loadDuration)}")
-      }
-
-      override def miss(fs: FileSystem, id: DepID) = {
-        println(s"Uncached: ${id.shortString}")
-      }
-
-      override def saved(fs: FileSystem, id: DepID, calcDuration: Long, saveDuration: Long) = {
-        println(f"Cache saved: ${id.shortString}, calc = ${time(calcDuration)}, save = ${time(saveDuration)}")
-      }
-    }
-
-    val cp = new Checkpoint(parsedArgs.fsForCache, logCache)
-
-    val ctx = new NBContext(notebookName, notebookClassName, listeners, cp)
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, newCP)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
@@ -158,4 +136,76 @@ object Runner {
     }
     writeIpynb()
   }
+
+  class CacheLogger(ctx: NBContext) extends cache.CacheEventListener {
+    import com.todesking.scalanb.format.Html.h
+
+    private[this] def time(millis: Long): String =
+      format.Time.fromMillis(millis)
+
+    private[this] def display(v: Value) = ctx.event.send(Event.Display(v))
+    private[this] def localDateTimeString(i: java.time.Instant) = {
+      val ldt = java.time.OffsetDateTime.ofInstant(i, java.time.ZoneId.systemDefault())
+      val format = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+      format.format(ldt)
+    }
+    private[this] def showMeta(meta: MetaData): String = s"""
+    |<details>
+    |<summary>${h(meta.id.shortString)}</summary>
+    |<dl>
+    |<dt>ID</dt><dd>${showId(meta.id)}</dd>
+    |<dt>Created at<dt><dd>${h(localDateTimeString(meta.createdAt))}</dd>
+    |<dt>Calc duration</dt><dd>${h(time(meta.calcDuration))}</dd>
+    |<dt>Save duration</dt><dd>${h(time(meta.saveDuration))}</dd>
+    |</dl>
+    |</details>""".stripMargin.drop(1)
+    private[this] def showId(id: DepID): String = {
+      val code = id match {
+        case DepID.Root(ns, name, src, deps) => src
+        case DepID.Map(parent, src) => src
+        case _ => ""
+      }
+      val codeHtml =
+        if (code == "") ""
+        else
+          s"""
+          |<dt>Code</dt>
+          |<dd><div class="highlight hl-scala">
+          |  <pre>${h(code)}</pre>
+          |</div></dd>""".stripMargin.drop(1)
+      s"""
+      |<details>
+      |<summary>${h(id.shortString)}</summary>
+      |<dl>
+      |<dt>Namespace</dt><dd>${h(id.namespace)}</dd>
+      |<dt>Name</dt><dd>${h(id.name)}</dd>
+      |${codeHtml}
+      |<dt>Deps</dt>
+      |<dd><ul>${id.deps.map(showId).map(s => s"<li>${s}</li>").mkString("\n")}</ul></dd>
+      |</dl>
+      |</details>""".stripMargin.drop(1)
+    }
+
+    override def hit(fs: FileSystem, id: DepID, meta: MetaData) = {
+      display(
+        Value.text(s"Cache found: ${id.shortString}") ++ Value.html(s"""
+        |Cache found: ${h(id.shortString)}
+        |${showMeta(meta)}""".stripMargin.drop(1)))
+    }
+
+    override def loaded(fs: FileSystem, id: DepID, meta: MetaData, loadDuration: Long) = {
+      display(Value.text(f"Cache loaded: ${id.shortString}, duration = ${time(loadDuration)}"))
+    }
+
+    override def miss(fs: FileSystem, id: DepID) = {
+      display(Value.text(s"Uncached: ${id.shortString}") ++ Value.html(s"""
+        |Uncached: ${h(id.shortString)}
+        |${showId(id)}""".stripMargin.drop(1)))
+    }
+
+    override def saved(fs: FileSystem, id: DepID, meta: MetaData) = {
+      display(Value.text(f"Cache saved: ${id.shortString}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}") ++ Value.html(showMeta(meta)))
+    }
+  }
+
 }

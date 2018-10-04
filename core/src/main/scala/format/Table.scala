@@ -1,6 +1,7 @@
 package com.todesking.scalanb.format
 
 import com.todesking.scalanb.Value
+import com.todesking.scalanb.format.Html.h
 
 object Table {
   sealed abstract class Col {
@@ -46,8 +47,8 @@ object Table {
               case (Col.Filled(content, header), ci) =>
                 val (rowspan, colspan) = spans((ri, ci))
                 val td = if (header) "th" else "td"
-                val rs = if (rowspan > 1) s"""rowspan="${h(rowspan)}"""" else ""
-                val cs = if (colspan > 1) s"""colspan="${h(colspan)}"""" else ""
+                val rs = if (rowspan > 1) s"""rowspan="${h(rowspan.toString)}"""" else ""
+                val cs = if (colspan > 1) s"""colspan="${h(colspan.toString)}"""" else ""
                 s"""<$td style="text-align: right" $rs $cs>${wbr(h(content))}</$td>"""
             }.mkString("")
           }</tr>"""
@@ -75,13 +76,6 @@ object Table {
       rows.map { row => strWidth(row(i)) }.max
     }
   }
-
-  private[this] def h(s: Any): String = s.toString
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;")
 
   private[this] def wbr(s: String): String = s
     .replaceAll("=", "=<wbr></wbr>")

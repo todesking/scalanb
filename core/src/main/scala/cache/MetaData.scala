@@ -6,7 +6,8 @@ case class MetaData(
   id: DepID,
   typeName: String,
   createdAt: Instant,
-  duration: Duration) {
+  calcDuration: Long,
+  saveDuration: Long) {
   def toJson: String =
     MetaData.toJsonString(this)
 }
@@ -20,7 +21,8 @@ object MetaData {
       "id" -> serId(m.id),
       "type_name" -> JsString(m.typeName),
       "created_at" -> serInstant(m.createdAt),
-      "duration" -> serDuration(m.duration))
+      "calc_duration" -> m.calcDuration,
+      "save_duration" -> m.saveDuration)
 
   def fromJson(s: String): MetaData =
     fromJson(Json.parse(s))
@@ -30,7 +32,8 @@ object MetaData {
         id = deId(vs("id")),
         typeName = deString(vs("type_name")),
         createdAt = deInstant(vs("created_at")),
-        duration = deDuration(vs("duration")))
+        calcDuration = deLong(vs("calc_duration")),
+        saveDuration = deLong(vs("save_duration")))
   }
 
   private[this] def serInstant(i: Instant) =

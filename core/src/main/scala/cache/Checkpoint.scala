@@ -25,33 +25,29 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
   def cacheImpl[A](c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
     val nfs = fs.namespace(id.pathString)
     if (fs.exists(id.pathString)) {
-      eventListener.hit(fs, id)
+      val meta = MetaData.fromJson(nfs.readString("cache.json"))
+      eventListener.hit(fs, id, meta)
       Dep.lazyUNSAFE(id) {
-        eventListener.loading(fs, id)
         val (duration, cached) = time { c.load(nfs, "data") }
-        eventListener.loaded(fs, id, duration)
+        eventListener.loaded(fs, id, meta, duration)
         cached
       }
     } else {
       eventListener.miss(fs, id)
-      val (calcDuration, v) = time { value }
-      eventListener.calculated(fs, id, calcDuration)
-      val (saveDuration, _) = time { save(c, tt, nfs, id, v) }
-      eventListener.saved(fs, id, calcDuration, saveDuration)
+      val (meta, v) = save(c, tt, nfs, id, value)
+      eventListener.saved(fs, id, meta)
       Dep.eagerUNSAFE(id, v)
     }
   }
 
-  private[this] def save[A](c: Cacheable[A], tt: TypeTag[A], fs: FileSystem, id: DepID, value: => A): A = {
-    import java.time.{ Instant, Duration }
+  private[this] def save[A](c: Cacheable[A], tt: TypeTag[A], fs: FileSystem, id: DepID, value: => A): (MetaData, A) = {
+    import java.time.Instant
     val start = Instant.now()
-    val v = value
-    c.save(fs, "data")(v)
-    val end = Instant.now()
-    val duration = Duration.between(start, end)
-    val meta = MetaData(id, tt.tpe.typeSymbol.name.decodedName.toString, start, duration)
+    val (calcDuration, v) = time { value }
+    val (saveDuration, _) = time { c.save(fs, "data")(v) }
+    val meta = MetaData(id, tt.tpe.typeSymbol.name.decodedName.toString, start, calcDuration, saveDuration)
     fs.writeString("cache.json", meta.toJson)
-    v
+    (meta, v)
   }
 
   def list(fs: FileSystem): Seq[MetaData] = {
