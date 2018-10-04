@@ -4,7 +4,7 @@ import com.todesking.scalanb.impl
 
 import scala.language.implicitConversions
 
-class DepArg[A](val ids: Seq[DepID], val calc: => A) {
+class DepArg[A](val ids: Seq[DepID], calc: => A) {
   lazy val value: A = calc
 }
 object DepArg extends impl.cache.DepArgTupleInstances {
