@@ -18,8 +18,8 @@ trait Cacheable[A] { self =>
 trait CacheableLowPriority {
   protected def cacheable[A: Cacheable]: Cacheable[A] = implicitly[Cacheable[A]]
 
-  implicit def ofArrayCacheable[A: Cacheable: ClassTag]: Cacheable[Array[A]] =
-    ofSeqCacheable[A].transform[Array[A]](_.toSeq)(_.toArray)
+  implicit def ofArrayCacheable[A: ClassTag](implicit ev: Cacheable[Seq[A]]): Cacheable[Array[A]] =
+    ev.transform[Array[A]](_.toSeq)(_.toArray)
 
   implicit def ofSeqCacheable[A: Cacheable]: Cacheable[Seq[A]] = new Cacheable[Seq[A]] {
     override def save(fs: FileSystem, name: String)(value: Seq[A]) = {
@@ -103,9 +103,15 @@ object Cacheable extends CacheableLowPriority {
     }
   }
 
-  implicit def ofSeq[A: ClassTag](implicit ev: Cacheable[Array[A]]): Cacheable[Seq[A]] =
-    ev.transform[Seq[A]](_.toArray)(_.toSeq)
+  private[this] def ofSeqX[A: ClassTag]: Cacheable[Seq[A]] =
+    ofSerializable[Array[A]].transform[Seq[A]](_.toArray)(_.toSeq)
 
-  implicit def ofArrayInt: Cacheable[Array[Int]] =
-    ofSerializable[Array[Int]]
+  implicit def ofSeqByte: Cacheable[Seq[Byte]] = ofSeqX[Byte]
+  implicit def ofSeqShort: Cacheable[Seq[Short]] = ofSeqX[Short]
+  implicit def ofSeqInt: Cacheable[Seq[Int]] = ofSeqX[Int]
+  implicit def ofSeqLong: Cacheable[Seq[Long]] = ofSeqX[Long]
+  implicit def ofSeqFloat: Cacheable[Seq[Float]] = ofSeqX[Float]
+  implicit def ofSeqDouble: Cacheable[Seq[Double]] = ofSeqX[Double]
+  implicit def ofSeqChar: Cacheable[Seq[Char]] = ofSeqX[Char]
+  implicit def ofSeqString: Cacheable[Seq[String]] = ofSeqX[String]
 }
