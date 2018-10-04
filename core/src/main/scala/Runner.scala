@@ -111,11 +111,23 @@ object Runner {
     }
 
     val logCache = new cache.CacheEventListener {
+      private[this] def time(millis: Long): String =
+        format.Time.fromMillis(millis)
+
       override def hit(fs: FileSystem, id: DepID) = {
-        println(s"Load from cache: ${id.shortString}")
+        println(s"Cache found: ${id.shortString}")
       }
+
+      override def loaded(fs: FileSystem, id: DepID, loadDuration: Long) = {
+        println(f"Load from cache: ${id.shortString}, duration = ${time(loadDuration)}")
+      }
+
       override def miss(fs: FileSystem, id: DepID) = {
         println(s"Uncached: ${id.shortString}")
+      }
+
+      override def saved(fs: FileSystem, id: DepID, calcDuration: Long, saveDuration: Long) = {
+        println(f"Cache saved: ${id.shortString}, calc = ${time(calcDuration)}, save = ${time(saveDuration)}")
       }
     }
 
