@@ -93,7 +93,7 @@ object Checkpoint {
 
     private[this] def nocacheImpl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree): Expr[Dep[R]] = {
       val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $emptySeq)"
-      Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.eagerUNSAFE($id, $value)")
+      Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.lazyUNSAFE($id)($value)")
     }
 
     def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {
