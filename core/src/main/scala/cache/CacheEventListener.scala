@@ -4,6 +4,7 @@ import com.todesking.scalanb.io.FileSystem
 
 trait CacheEventListener {
   def hit(fs: FileSystem, id: DepID): Unit = {}
+  def loading(fs: FileSystem, id: DepID): Unit = {}
   def loaded(fs: FileSystem, id: DepID, loadDuration: Long): Unit = {}
 
   def miss(fs: FileSystem, id: DepID): Unit = {}

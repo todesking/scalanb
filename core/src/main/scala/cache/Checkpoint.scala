@@ -27,6 +27,7 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
     if (fs.exists(id.pathString)) {
       eventListener.hit(fs, id)
       Dep.lazyUNSAFE(id) {
+        eventListener.loading(fs, id)
         val (duration, cached) = time { c.load(nfs, "data") }
         eventListener.loaded(fs, id, duration)
         cached

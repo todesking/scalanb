@@ -118,8 +118,11 @@ object Runner {
         println(s"Cache found: ${id.shortString}")
       }
 
+      override def loading(fs: FileSystem, id: DepID) = {
+        println(s"Cache loading: ${id.shortString}")
+      }
       override def loaded(fs: FileSystem, id: DepID, loadDuration: Long) = {
-        println(f"Load from cache: ${id.shortString}, duration = ${time(loadDuration)}")
+        println(f"Cache loaded: duration = ${time(loadDuration)}")
       }
 
       override def miss(fs: FileSystem, id: DepID) = {
