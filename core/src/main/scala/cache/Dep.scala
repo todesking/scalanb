@@ -7,10 +7,12 @@ import scala.reflect.macros.blackbox.Context
 
 import scala.language.experimental.macros
 
-class Dep[+A] private (val id: DepID, val unwrapUNSAFE: A) {
+sealed abstract class Dep[+A] {
+  val id: DepID
+  val unwrapUNSAFE: A
   def decompose[B](implicit ev: Decomposable[A, B]): B = ev(this)
 
-  def mapUNSAFE[B](f: A => B): Dep[B] = Dep.buildUNSAFE(id, f(unwrapUNSAFE))
+  def mapUNSAFE[B](f: A => B): Dep[B] = Dep.lazyUNSAFE(id)(f(unwrapUNSAFE))
 
   def map[B](f: A => B): Dep[B] = macro Dep.MacroImpl.mapImpl[A, B]
 
@@ -18,10 +20,16 @@ class Dep[+A] private (val id: DepID, val unwrapUNSAFE: A) {
 }
 
 object Dep {
-  def buildUNSAFE[A](id: DepID, value: A) = new Dep(id, value)
+  def eagerUNSAFE[A](id: DepID, value: A) = new Eager(id, value)
+  def lazyUNSAFE[A](id: DepID)(value: => A) = new Lazy(id, value)
 
   implicit def format[A: Format]: Format[Dep[A]] = Format[Dep[A]] { d =>
     Format.of[A].apply(d.unwrapUNSAFE)
+  }
+
+  class Eager[A](override val id: DepID, override val unwrapUNSAFE: A) extends Dep[A]
+  class Lazy[A](override val id: DepID, calc: => A) extends Dep[A] {
+    override lazy val unwrapUNSAFE = calc
   }
 
   class MacroImpl(val c: Context) {
@@ -36,7 +44,7 @@ object Dep {
       c.Expr[Dep[B]](q"""
       val self = $self
       val id = self.id.map($src)
-      _root_.com.todesking.scalanb.cache.Dep.buildUNSAFE(id, $f.apply(self.unwrapUNSAFE))
+      _root_.com.todesking.scalanb.cache.Dep.lazyUNSAFE(id)($f.apply(self.unwrapUNSAFE))
       """)
     }
   }

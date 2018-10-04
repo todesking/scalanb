@@ -19,7 +19,7 @@ trait Implicits {
     override def save(fs: FileSystem, name: String)(d: Dataset[A]) =
       dfc.save(fs, name)(d.toDF)
     override def load(fs: FileSystem, name: String) =
-      dfc.load(fs, name).map(_.as[A])
+      dfc.load(fs, name).as[A]
   }
 
   implicit def dataFrameCacheable(implicit spark: SparkSession): Cacheable[DataFrame] = new Cacheable[DataFrame] {
@@ -29,12 +29,9 @@ trait Implicits {
       df.cache().write.orc(nfs.uri("data.orc"))
     }
     override def load(fs: FileSystem, name: String) = {
-      if (!fs.exists(name)) None
-      else {
-        val nfs = fs.namespace(name)
-        val schema = deserializeSchema(nfs.readString("schema.json"))
-        Some(spark.read.schema(schema).orc(nfs.uri("data.orc")))
-      }
+      val nfs = fs.namespace(name)
+      val schema = deserializeSchema(nfs.readString("schema.json"))
+      spark.read.schema(schema).orc(nfs.uri("data.orc"))
     }
 
     val simpleTypeToName = {
@@ -146,10 +143,7 @@ trait Implicits {
     }
 
     override def load(fs: FileSystem, name: String) = {
-      if (!fs.exists(name)) None
-      else {
-        Some(readable.read.load(fs.uri(name, "model")).asInstanceOf[A])
-      }
+      readable.read.load(fs.uri(name, "model")).asInstanceOf[A]
     }
   }
 

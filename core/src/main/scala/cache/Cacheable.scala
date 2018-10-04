@@ -5,13 +5,13 @@ import scala.reflect.ClassTag
 
 trait Cacheable[A] { self =>
   def save(fs: FileSystem, name: String)(value: A): Unit
-  def load(fs: FileSystem, name: String): Option[A]
+  def load(fs: FileSystem, name: String): A
 
   def transform[B](push: B => A)(pull: A => B): Cacheable[B] = new Cacheable[B] {
     override def save(fs: FileSystem, name: String)(value: B) =
       self.save(fs, name)(push(value))
     override def load(fs: FileSystem, name: String) =
-      self.load(fs, name).map(pull)
+      pull(self.load(fs, name))
   }
 }
 
@@ -32,12 +32,9 @@ trait CacheableLowPriority {
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      cacheable[Int].load(nfs, "size").flatMap { size =>
-        val cached: Seq[Option[A]] =
-          (0 until size).map { i =>
-            cacheable[A].load(nfs, s"item_$i")
-          }
-        Some(cached.map(_.get))
+      val size = cacheable[Int].load(nfs, "size")
+      (0 until size).map { i =>
+        cacheable[A].load(nfs, s"item_$i")
       }
     }
   }
@@ -59,12 +56,9 @@ object Cacheable extends CacheableLowPriority {
     }
 
     override def load(fs: FileSystem, name: String) = {
-      if (!fs.exists(name)) None
-      else {
-        val data = fs.readBytes(name)
-        val is = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(data))
-        Some(doGet(is))
-      }
+      val data = fs.readBytes(name)
+      val is = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(data))
+      doGet(is)
     }
   }
 
@@ -87,10 +81,9 @@ object Cacheable extends CacheableLowPriority {
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      for {
-        a1 <- cacheable[A1].load(nfs, "_1")
-        a2 <- cacheable[A2].load(nfs, "_2")
-      } yield (a1, a2)
+      val a1 = cacheable[A1].load(nfs, "_1")
+      val a2 = cacheable[A2].load(nfs, "_2")
+      (a1, a2)
     }
   }
 
@@ -103,11 +96,10 @@ object Cacheable extends CacheableLowPriority {
     }
     override def load(fs: FileSystem, name: String) = {
       val nfs = fs.namespace(name)
-      for {
-        a1 <- cacheable[A1].load(nfs, "_1")
-        a2 <- cacheable[A2].load(nfs, "_2")
-        a3 <- cacheable[A3].load(nfs, "_3")
-      } yield (a1, a2, a3)
+      val a1 = cacheable[A1].load(nfs, "_1")
+      val a2 = cacheable[A2].load(nfs, "_2")
+      val a3 = cacheable[A3].load(nfs, "_3")
+      (a1, a2, a3)
     }
   }
 

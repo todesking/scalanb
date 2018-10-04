@@ -16,16 +16,28 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
   def cache0[R: Cacheable: TypeTag](f: R): Dep[R] = macro Checkpoint.Impl.cache0[R]
   def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.cache1[A, R]
 
+  private[this] def time[A](a: => A): (Long, A) = {
+    val start = System.currentTimeMillis()
+    val value = a
+    val duration = System.currentTimeMillis() - start
+    (duration, value)
+  }
   def cacheImpl[A](c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
     val nfs = fs.namespace(id.pathString)
-    val cached = c.load(nfs, "data")
-    if (cached.isEmpty) eventListener.miss(fs, id)
-    else eventListener.hit(fs, id)
-    cached.map { v =>
-      Dep.buildUNSAFE(id, v)
-    } getOrElse {
-      val v = save(c, tt, nfs, id, value)
-      Dep.buildUNSAFE(id, v)
+    if (fs.exists(id.pathString)) {
+      eventListener.hit(fs, id)
+      Dep.lazyUNSAFE(id) {
+        val (duration, cached) = time { c.load(nfs, "data") }
+        eventListener.loaded(fs, id, duration)
+        cached
+      }
+    } else {
+      eventListener.miss(fs, id)
+      val (calcDuration, v) = time { value }
+      eventListener.calculated(fs, id, calcDuration)
+      val (saveDuration, _) = time { save(c, tt, nfs, id, v) }
+      eventListener.saved(fs, id, calcDuration, saveDuration)
+      Dep.eagerUNSAFE(id, v)
     }
   }
 
@@ -80,7 +92,7 @@ object Checkpoint {
 
     private[this] def nocacheImpl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree): Expr[Dep[R]] = {
       val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $emptySeq)"
-      Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.buildUNSAFE($id, $value)")
+      Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.eagerUNSAFE($id, $value)")
     }
 
     def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {

@@ -96,7 +96,7 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       val c = implicitly[Cacheable[DataFrame]]
       val cv = cp.join(v) { v =>
         c.save(fs, "v2")(v)
-        c.load(fs, "v2").get
+        c.load(fs, "v2")
       }
 
       cp.join((v, cv)) {
@@ -108,7 +108,6 @@ class SparkCacheTest extends org.scalatest.FunSpec {
 
   it("should cache MLWritable")(withSpark { implicit spark =>
     withTmpDir { tmp =>
-      import spark.implicits._
       import com.todesking.scalanb.spark.AllImplicits._
       val fs = new LocalFileSystem(tmp.toString)
       val cp = new Checkpoint(fs)
@@ -120,7 +119,7 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       val cx =
         cp.join(x) { x =>
           c.save(fs, "cx")(x)
-          c.load(fs, "cx").get
+          c.load(fs, "cx")
         }
       cp.join((x, cx)) {
         case (c, cx) =>

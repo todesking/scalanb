@@ -5,7 +5,7 @@ trait Dependable[-A, +B] {
 }
 object Dependable {
   def apply[A](f: A => DepID): Dependable[A, A] = new Dependable[A, A] {
-    override def apply(a: A) = Dep.buildUNSAFE(f(a), a)
+    override def apply(a: A) = Dep.eagerUNSAFE(f(a), a)
   }
 
   implicit def ofDep[A]: Dependable[Dep[A], A] = new Dependable[Dep[A], A] {
@@ -29,9 +29,9 @@ object Dependable {
       case Some(a) =>
         val d = implicitly[Dependable[A, B]].apply(a)
         val id = DepID.forValue(s"option.Some(${d.id.name})", s"Some(${d.id.name})", Seq(d.id))
-        Dep.buildUNSAFE(id, Some(d.unwrapUNSAFE))
+        Dep.eagerUNSAFE(id, Some(d.unwrapUNSAFE))
       case None =>
-        Dep.buildUNSAFE(DepID.forValue("option.None", "None", Seq()), None)
+        Dep.eagerUNSAFE(DepID.forValue("option.None", "None", Seq()), None)
     }
   }
 
@@ -40,7 +40,7 @@ object Dependable {
       val ds = xs.map { x => implicitly[Dependable[A, B]].apply(x) }
       val name = ds.map(_.id.name).mkString(",")
       val id = DepID.forValue(s"Seq($name)", s"Seq($name)", ds.map(_.id))
-      Dep.buildUNSAFE(id, ds.map(_.unwrapUNSAFE))
+      Dep.eagerUNSAFE(id, ds.map(_.unwrapUNSAFE))
     }
   }
 }
