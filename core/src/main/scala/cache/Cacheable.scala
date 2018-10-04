@@ -101,6 +101,11 @@ object Cacheable extends CacheableLowPriority {
   implicit def ofArray[A: ClassTag](implicit ev: Cacheable[Seq[A]]): Cacheable[Array[A]] =
     ev.transform[Array[A]](_.toSeq)(_.toArray)
 
+  implicit def ofIndexedSeq[A](implicit ev: Cacheable[Seq[A]]): Cacheable[IndexedSeq[A]] =
+    ev.transform[IndexedSeq[A]](identity)(_.toIndexedSeq)
+  implicit def ofImmutableIndexedSeq[A](implicit ev: Cacheable[Seq[A]]): Cacheable[scala.collection.immutable.IndexedSeq[A]] =
+    ev.transform[scala.collection.immutable.IndexedSeq[A]](identity)(_.toIndexedSeq)
+
   private[this] def ofSeqX[A: ClassTag]: Cacheable[Seq[A]] =
     ofSerializable[Array[A]].transform[Seq[A]](_.toArray)(_.toSeq)
 
