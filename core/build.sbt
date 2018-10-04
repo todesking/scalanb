@@ -30,9 +30,9 @@ ${
   val ids = Seq(${
     range.map { i => s"a$i.id" }.mkString(", ")
   })
-  new DepArg(ids, ${
+  new DepArg(ids, (${
     range.map { i => s"a$i.unwrapUNSAFE" }.mkString(", ")
-  })
+  }))
 }
 """
   }
