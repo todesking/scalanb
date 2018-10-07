@@ -6,14 +6,13 @@ import com.todesking.scalanb.io.FileSystem
 import com.todesking.scalanb.cache.Checkpoint
 import com.todesking.scalanb.cache.DepID
 import com.todesking.scalanb.cache.MetaData
-import com.todesking.{ scalanb => nb }
 
 object Runner {
-  def run[A](ctx: NBContext)(f: NBContext => A): A = {
-    val tappedOut = TappedPrintStream(System.out) { str =>
+  def run[A](ctx: NBContext, silent: Boolean)(f: NBContext => Unit): Unit = {
+    val tappedOut = TappedPrintStream(System.out, silent) { str =>
       ctx.event.send(Event.StdOut(str))
     }
-    val tappedErr = TappedPrintStream(System.out) { str =>
+    val tappedErr = TappedPrintStream(System.out, silent) { str =>
       ctx.event.send(Event.StdErr(str))
     }
 
@@ -21,10 +20,13 @@ object Runner {
       try {
         f(ctx)
       } catch {
+        case e: Exit =>
         case e: Throwable =>
           ctx.event.send(Event.Error(e, ctx.state.config.errorFormat))
           // TODO: Write incomplete notebook
           throw e
+      } finally {
+        ctx.event.send(Event.Finish())
       }
     }
   }
@@ -126,7 +128,7 @@ object Runner {
       out.write(s"$logName.scala", src)
 
     try {
-      run(ctx)(invoke)
+      run(ctx, silent = false)(invoke)
     } catch {
       case e: Throwable =>
         if (parsedArgs.ipynbOnError) writeIpynb()

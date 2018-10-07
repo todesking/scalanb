@@ -24,4 +24,6 @@ package object scalanb {
   def inspect[A](body: A): A = macro Inspect.apply[A]
 
   def checkpoint(implicit ctx: NBContext) = ctx.checkpoint
+
+  def exit(): Nothing = throw new Exit()
 }
