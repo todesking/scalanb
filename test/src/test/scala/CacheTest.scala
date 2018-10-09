@@ -69,6 +69,12 @@ class CacheTest extends org.scalatest.FunSpec {
       val s2 = x.map(_.toString)
       assert(s1.id == s2.id)
     })
+    it("should record its dependency")(withFS { fs =>
+      val cp = new Checkpoint(fs)
+      val x = cp.source { 1 }
+      val y = cp.join(x) { x => x + 1 }
+      assert(y.id.deps == Seq(x.id))
+    })
   }
   describe("Decomposable") {
     it("should decompose dep value")(withFS { fs =>

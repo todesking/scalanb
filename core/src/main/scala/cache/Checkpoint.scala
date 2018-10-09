@@ -79,16 +79,16 @@ object Checkpoint {
     val valName = util.enclosingOwnerName
 
     def nocache0[R: WeakTypeTag](f: Expr[R]): Expr[Dep[R]] =
-      nocacheImpl[Unit, R](source(f.tree), f.tree)
+      nocacheImpl[Unit, R](source(f.tree), f.tree, emptySeq)
 
     def nocache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[R]): Expr[Dep[R]] =
-      nocacheImpl[A, R](source(f.tree), q"$f($args.value)")
+      nocacheImpl[A, R](source(f.tree), q"$f($args.value)", q"$args.ids")
 
     val emptySeq = q"_root_.scala.collection.immutable.Seq()"
     val getClassName = q"this.getClass.getName"
 
-    private[this] def nocacheImpl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree): Expr[Dep[R]] = {
-      val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $emptySeq)"
+    private[this] def nocacheImpl[A: WeakTypeTag, R: WeakTypeTag](src: String, value: Tree, ids: Tree): Expr[Dep[R]] = {
+      val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $ids)"
       Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.lazyUNSAFE($id)($value)")
     }
 
