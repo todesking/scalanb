@@ -65,9 +65,14 @@ class CacheTest extends org.scalatest.FunSpec {
       val cp = new Checkpoint(fs)
 
       val x = cp.source { 1 }
-      val s1 = x.map(_.toString)
-      val s2 = x.map(_.toString)
-      assert(s1.id == s2.id)
+      val x1 = x.map(_.toString)
+      val x2 = x.map(_.toString)
+      assert(x1.id == x2.id)
+
+      val y = cp.source((1, 2))
+      val y1 = y.map { case (a, b) => a + b }
+      val y2 = y.map { case (a, b) => a + b }
+      assert(y1.id == y2.id)
     })
     it("should record its dependency")(withFS { fs =>
       val cp = new Checkpoint(fs)

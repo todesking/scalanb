@@ -112,7 +112,7 @@ object Checkpoint {
       // Hack: If argument has no name, scalac will name it as "x$123".
       // This name will change for each compile(if other part of source changed),
       // so I should "normalize" these names.
-      val re = """(x\$\d+)""".r
+      val re = """(x\d*\$\d+)""".r
       val nameMap =
         re.findAllMatchIn(t.toString)
           .map(_.group(0))
