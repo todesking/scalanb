@@ -23,16 +23,22 @@ object Value {
   def apply(contentType: String, value: JsValue): Value =
     Value(Map(contentType -> value))
 
+  def apply(contentType: String, value: String): Value =
+    apply(contentType, JsString(value))
+
   def text(s: String): Value =
-    apply("text/plain", JsString(s))
+    apply("text/plain", s)
 
   def html(s: String): Value =
-    apply("text/html", JsString(s))
+    apply("text/html", s)
 
   def csv(s: String): Value =
-    apply("text/csv", JsString(s))
+    apply("text/csv", s)
 
   def binary(mime: String, data: Array[Byte]): Value =
     apply(mime, JsString(java.util.Base64.getEncoder.encodeToString(data)))
+
+  def svg(s: String): Value =
+    apply("image/svg+xml", s)
 }
 
