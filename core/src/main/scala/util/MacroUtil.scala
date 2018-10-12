@@ -60,16 +60,6 @@ object MacroUtil {
       // Sometimes two tree have same point: `foo(x)` and `x` for example
       // So we register all children, regardless the tree is registered or not
       t.children.foreach(register)
-      import c.universe._
-      t match {
-        case Block(stats, expr) =>
-          (stats :+ expr).foreach(register)
-        case Apply(fun, args) =>
-          dbg(s"Apply: fun=$fun, args=${args.map { a => s"$a: ${a.getClass}, ${a.pos}" }}")
-          register(fun)
-          args.foreach(register)
-        case _ =>
-      }
     }
 
     def wholeSource(trees: Seq[Tree]): String =
