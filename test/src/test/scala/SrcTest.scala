@@ -48,6 +48,12 @@ class SrcTest extends org.scalatest.FunSpec {
       y
     }) == Seq("val x: Double = 10", "val y = 20", "y"))
   }
+  it("Source extractor works in module's companion object") {
+    assert(SrcTest.A.sources == Seq(
+    "val a = 123L",
+    "val b = a * 10",
+    "(a + b).toString"))
+  }
 }
 
 object SrcTest {
@@ -74,6 +80,16 @@ object SrcTest {
     class DeepModule(x: Int) {
       val a = x + 2
       val b = a
+    }
+  }
+
+  @nb.Module
+  class A
+  object A {
+    def sources = nb.Inspect.sources {
+      val a = 123L
+      val b = a * 10
+      (a + b).toString
     }
   }
 }
