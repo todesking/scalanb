@@ -57,7 +57,7 @@ class Example1 {
   f(10); f(99)
 
   val x = 2
-  val y = 100
+  val y = nb.p(100)
   Thread.sleep(x * y)
 
   locally {

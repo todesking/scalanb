@@ -21,6 +21,11 @@ package object scalanb {
   def display[A](value: A)(implicit ctx: NBContext, format: Format[A]): Unit =
     ctx.event.send(Event.Display(format(value)))
 
+  def p[A: Format](value: A)(implicit ctx: NBContext): A = {
+    display(value)
+    value
+  }
+
   def inspect[A](body: A): A = macro Inspect.apply[A]
 
   def checkpoint(implicit ctx: NBContext) = ctx.checkpoint
