@@ -203,6 +203,7 @@ object EventListener {
         startAt = Some(System.currentTimeMillis())
         write(src, "> ")
       case Event.Markdown(s) =>
+        write(s, "markdown: ")
       case Event.Expr(value) =>
         val s = value.text
         write(s, "=> ")
