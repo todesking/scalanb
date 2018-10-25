@@ -6,6 +6,12 @@ import scala.reflect.runtime.universe.WeakTypeTag
 
 trait Format[-A] {
   def apply(value: A): Value
+  def transform[B](f: B => A): Format[B] = {
+    val self = this
+    new Format[B] {
+      override def apply(value: B) = self.apply(f(value))
+    }
+  }
 }
 
 trait ErrorFormat {
@@ -41,14 +47,18 @@ object Format {
     Value.text(f"$i${numSummary(i)}")
   }
   implicit val defaultValue: Format[Value] = apply(identity)
-  implicit def defaultSeq[A: Format: WeakTypeTag]: Format[Seq[A]] = apply { xs =>
+
+  private[this] def formatSeq[A: Format: WeakTypeTag](xs: Seq[A], collName: String): Value = {
     import format.Table.Col
     val elmName = implicitly[WeakTypeTag[A]].tpe.typeSymbol.name.toString
     format.Table.table(
-      Seq(Col(s"Seq[$elmName]", header = true)) +: xs.map(of[A].apply).map { v =>
+      Seq(Col(s"$collName[$elmName]", header = true)) +: xs.map(of[A].apply).map { v =>
         Seq(Col(v.text))
       })
   }
+  implicit def defaultSeq[A: Format: WeakTypeTag]: Format[Seq[A]] = apply(formatSeq(_, "Seq"))
+  implicit def defaultArray[A: Format: WeakTypeTag]: Format[Array[A]] = apply { xs => formatSeq(xs.toSeq, "Array") }
+
   implicit def defaultMap[A: Format: WeakTypeTag, B: Format: WeakTypeTag]: Format[Map[A, B]] = apply { xs =>
     import format.Table.Col
     val keyName = implicitly[WeakTypeTag[A]].tpe.typeSymbol.name.toString

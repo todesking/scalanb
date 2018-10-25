@@ -27,6 +27,8 @@ class Example1 {
 
   val aa, bb, cc = 1; aa
 
+  Array(1, 2, 3)
+
   val myModule = Module.load(param1 = 10)
   import myModule._
 
