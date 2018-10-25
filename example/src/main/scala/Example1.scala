@@ -32,6 +32,8 @@ class Example1 {
   val myModule = Module.load(param1 = 10)
   import myModule._
 
+  val silentLoaded = Module.loadSilent(param1 = 10)
+
   moduleValue
 
   Seq(1, 2, 3, 4, 5)

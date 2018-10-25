@@ -53,6 +53,8 @@ object Module {
         def load(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname = {
           ctx.loadModule[$tpname]($moduleName, $className) {  c => new $tpname(...$argNames)(c) }
         }
+        def loadSilent(...$loadArgs)(implicit ctx: _root_.com.todesking.scalanb.NBContext): $tpname =
+          _root_.com.todesking.scalanb.silent(load(...$argNames))
         val scalanb__source = ${util.stringLiteral(util.wholeSource(stats))}
         ..$ostats
       }"""

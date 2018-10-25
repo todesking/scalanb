@@ -18,6 +18,15 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
 
   lazy val checkpoint = newCP(this)
 
+  private[this] var _silent = false
+
+  def silent[A](f: => A): A = {
+    val old = _silent
+    _silent = true
+    try { f }
+    finally { _silent = old }
+  }
+
   def config = state.config
   def setConfig(c: NBConfig): Unit = {
     _state = _state.copy(config = c)
@@ -44,7 +53,7 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
 
   object event {
     def send(e: Event): Unit =
-      listeners.foreach { l => l.event(state, e) }
+      if (!_silent) listeners.foreach { l => l.event(state, e) }
 
     final def expr(value: Unit): Unit = {}
     final def expr(value: Nothing): Nothing = throw new AssertionError

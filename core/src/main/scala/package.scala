@@ -31,4 +31,7 @@ package object scalanb {
   def checkpoint(implicit ctx: NBContext) = ctx.checkpoint
 
   def exit(): Nothing = throw new Exit()
+
+  def silent[A](f: => A)(implicit ctx: NBContext): A =
+    ctx.silent(f)
 }
