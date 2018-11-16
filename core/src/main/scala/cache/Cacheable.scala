@@ -3,6 +3,8 @@ package com.todesking.scalanb.cache
 import com.todesking.scalanb.io.FileSystem
 import scala.reflect.ClassTag
 
+import com.todesking.scalanb.Value
+
 trait Cacheable[A] { self =>
   def save(fs: FileSystem, name: String)(value: A): Unit
   def load(fs: FileSystem, name: String): A
@@ -67,6 +69,21 @@ object Cacheable extends CacheableLowPriority {
 
   implicit def ofString: Cacheable[String] =
     ofSerializable[String]
+
+  implicit def ofValue: Cacheable[Value] = new Cacheable[Value] {
+    import play.api.libs.json
+    override def save(fs:FileSystem, name: String)(value: Value) = {
+      fs.writeString(name, json.Json.prettyPrint(json.JsObject(value.data.toSeq)))
+    }
+    override def load(fs: FileSystem, name: String) = {
+      json.Json.parse(fs.readString(name)) match {
+        case json.JsObject(data) =>
+          Value(data.toMap)
+        case x =>
+          throw new RuntimeException(s"Invalid serialized data for Value: $x")
+      }
+    }
+  }
 
   implicit def ofTuple2[A1: Cacheable, A2: Cacheable]: Cacheable[(A1, A2)] = new Cacheable[(A1, A2)] {
     override def save(fs: FileSystem, name: String)(value: (A1, A2)) = {
