@@ -189,10 +189,7 @@ object Runner {
     }
 
     override def hit(fs: FileSystem, id: DepID, meta: MetaData) = {
-      display(
-        Value.text(s"Cache found: ${id.shortString}") ++ Value.html(s"""
-        |Cache found: ${h(id.shortString)}
-        |${showMeta(meta)}""".stripMargin.drop(1)))
+      display(Value.text(s"${id.shortString}, created=${localDateTimeString(meta.createdAt)}, calc = ${time(meta.calcDuration)}, save = ${meta.saveDuration}"))
     }
 
     override def loaded(fs: FileSystem, id: DepID, meta: MetaData, loadDuration: Long) = {
@@ -206,7 +203,7 @@ object Runner {
     }
 
     override def saved(fs: FileSystem, id: DepID, meta: MetaData) = {
-      display(Value.text(f"Cache saved: ${id.shortString}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}") ++ Value.html(showMeta(meta)))
+      display(Value.text(f"Cache saved: ${id.shortString}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}"))
     }
   }
 
