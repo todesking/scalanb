@@ -39,11 +39,13 @@ object ImplicitsUtil {
       }.toSeq
       (cols, rows)
     }
-    def show(n: Int = 10): Value = {
+    def show(n: Int = 10): Value = table(n)
+    def table(n: Int = 10): Value = {
       val (cols, rows) = build(n)
       Table.table(cols, rows)
     }
-    def vshow(n: Int = 10): Value = {
+    def vshow(n: Int = 10): Value =vtable(n)
+    def vtable(n: Int = 10): Value = {
       val (cols, rows) = build(n)
       Table.vtable(cols, rows)
     }
