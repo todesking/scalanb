@@ -90,7 +90,7 @@ object Cacheable extends CacheableLowPriority {
 
   implicit def ofValue: Cacheable[Value] = new Cacheable[Value] {
     import play.api.libs.json
-    override def save(fs:FileSystem, name: String)(value: Value) = {
+    override def save(fs: FileSystem, name: String)(value: Value) = {
       fs.writeString(name, json.Json.prettyPrint(json.JsObject(value.data.toSeq)))
     }
     override def load(fs: FileSystem, name: String) = {

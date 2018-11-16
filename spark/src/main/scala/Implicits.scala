@@ -44,7 +44,7 @@ object ImplicitsUtil {
       val (cols, rows) = build(n)
       Table.table(cols, rows)
     }
-    def vshow(n: Int = 10): Value =vtable(n)
+    def vshow(n: Int = 10): Value = vtable(n)
     def vtable(n: Int = 10): Value = {
       val (cols, rows) = build(n)
       Table.vtable(cols, rows)
