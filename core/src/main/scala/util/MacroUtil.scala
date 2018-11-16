@@ -43,8 +43,12 @@ object MacroUtil {
     }
 
     // Sometimes val name contains trailing space. Weird.
-    def enclosingOwnerName: String =
-      c.internal.enclosingOwner.name.decodedName.toString.replaceAll("""\s+$""", "")
+    def enclosingOwnerName: String = {
+      val owner = c.internal.enclosingOwner
+      val name = owner.name.decodedName.toString
+      if (owner.isType || owner.isModule || name.startsWith("$anon")) "__anon__"
+      else name.replaceAll("""\s+$""", "")
+    }
 
     def register(t: Tree): Unit = {
       // When tree is transformed via annotation macro expantion,

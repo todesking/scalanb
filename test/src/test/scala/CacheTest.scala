@@ -80,6 +80,14 @@ class CacheTest extends org.scalatest.FunSpec {
       val y = cp.join(x) { x => x + 1 }
       assert(y.id.deps == Seq(x.id))
     })
+    it("should accept anon cache")(withFS { fs =>
+      val cp = new Checkpoint(fs)
+      def foo(a: Dep[Int]) = {
+        println(a.id)
+        assert(a.id.name == "__anon__")
+      }
+      foo(cp.cache0 { 1 })
+    })
   }
   describe("Decomposable") {
     it("should decompose dep value")(withFS { fs =>
