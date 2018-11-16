@@ -64,8 +64,26 @@ object Cacheable extends CacheableLowPriority {
   def ofSerializable[A <: java.io.Serializable] =
     byJavaSerialization[A] { (x, os) => os.writeObject(x) } { is => is.readObject().asInstanceOf[A] }
 
+  implicit def ofByte: Cacheable[Byte] =
+    byJavaSerialization[Byte] { (x, os) => os.writeByte(x) } { is => is.readByte() }
+
+  implicit def ofShort: Cacheable[Short] =
+    byJavaSerialization[Short] { (x, os) => os.writeShort(x) } { is => is.readShort() }
+
   implicit def ofInt: Cacheable[Int] =
     byJavaSerialization[Int] { (x, os) => os.writeInt(x) } { is => is.readInt() }
+
+  implicit def ofLong: Cacheable[Long] =
+    byJavaSerialization[Long] { (x, os) => os.writeLong(x) } { is => is.readLong() }
+
+  implicit def ofFloat: Cacheable[Float] =
+    byJavaSerialization[Float] { (x, os) => os.writeFloat(x) } { is => is.readFloat() }
+
+  implicit def ofDouble: Cacheable[Double] =
+    byJavaSerialization[Double] { (x, os) => os.writeDouble(x) } { is => is.readDouble() }
+
+  implicit def ofChar: Cacheable[Char] =
+    byJavaSerialization[Char] { (x, os) => os.writeChar(x) } { is => is.readChar() }
 
   implicit def ofString: Cacheable[String] =
     ofSerializable[String]
