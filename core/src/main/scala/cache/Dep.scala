@@ -15,6 +15,7 @@ sealed abstract class Dep[+A] {
   def mapUNSAFE[B](f: A => B): Dep[B] = Dep.lazyUNSAFE(id)(f(unwrapUNSAFE))
 
   def map[B](f: A => B): Dep[B] = macro Dep.MacroImpl.mapImpl[A, B]
+  def flatMap[B](f: A => Dep[B]) = macro Dep.MacroImpl.flatMapImpl[A, B]
 
   def foreach(f: A => Unit): Unit = f(unwrapUNSAFE)
 }
@@ -45,6 +46,14 @@ object Dep {
       val self = $self
       val id = self.id.map($src)
       _root_.com.todesking.scalanb.cache.Dep.lazyUNSAFE(id)($f.apply(self.unwrapUNSAFE))
+      """)
+    }
+    def flatMapImpl[A, B: WeakTypeTag](f: Expr[A => Dep[B]]): Expr[Dep[B]] = {
+      val src = util.stringLiteral(util.source(f.tree))
+      val self = c.prefix
+      c.Expr[Dep[B]](q"""
+      val self = $self
+      f(self.unwrapUNSAFE)
       """)
     }
   }
