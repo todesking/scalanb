@@ -1,45 +1,50 @@
 package test
 
-import com.todesking.scalanb.cache.{ DepID, Checkpoint, Dep, Cacheable, Decomposable, Dependable, MetaData }
+import com.todesking.scalanb.cache.{ DepID, Dep, Cacheable, Decomposable, Dependable, MetaData }
 import com.todesking.scalanb.io.{ FileSystem, LocalFileSystem }
 import scala.reflect.runtime.universe.TypeTag
+
+import com.todesking.{ scalanb => nb }
 
 class CacheTest extends org.scalatest.FunSpec {
   import test.io.FileSystemTestUtil.withTmpDir
 
+  val cache = nb.cache.get(getClass)
+
   def withFS(f: FileSystem => Unit): Unit =
     withTmpDir { tmp => f(new LocalFileSystem(tmp.toString)) }
+  def withCache(f: nb.cache.CacheContext => Unit) = withFS { fs =>
+    f(new nb.cache.CacheContext(fs))
+  }
 
-  def assertCacheable[A: Cacheable: TypeTag](a: A): Unit = withFS { fs =>
-    val cp = new Checkpoint(fs)
+  def assertCacheable[A: Cacheable: TypeTag](a: A): Unit = withCache { implicit ctx =>
     def eq(a: A): Any = a match {
       case x: Array[_] => x.toSeq
       case x => x
     }
     def exec() = {
-      val x = cp.cache0 { a }
-      cp.unwrap(x) { x => assert(eq(x) == eq(a)) }
+      val x = cache.cache0 { a }
+      cache.unwrap(x) { x => assert(eq(x) == eq(a)) }
     }
     exec()
     exec()
   }
 
   describe("Caching") {
-    it("should save/restore data")(withFS { fs =>
-      val cp = new Checkpoint(fs)
+    it("should save/restore data")(withCache { implicit ctx =>
       var count = 0
       def exec() = {
-        val x = cp.source { 1 }
+        val x = cache.source { 1 }
         val y = 100
-        val z = cp.cache0 { 1 }
-        val w = cp.cache((x, y)) {
+        val z = cache.cache0 { 1 }
+        val w = cache.cache((x, y)) {
           case (x, y) =>
             count += 1
             x + y
         }
-        assert(!fs.exists(x.id.pathString))
-        assert(fs.exists(z.id.pathString))
-        assert(fs.exists(w.id.pathString))
+        assert(!ctx.fs.exists(x.id.pathString))
+        assert(ctx.fs.exists(z.id.pathString))
+        assert(ctx.fs.exists(w.id.pathString))
 
         w.unwrapUNSAFE
       }
@@ -49,64 +54,58 @@ class CacheTest extends org.scalatest.FunSpec {
       assert(exec() == 101)
       assert(count == 1)
     })
-    it("should save metadata")(withFS { fs =>
-      val cp = new Checkpoint(fs)
-      val a = cp.cache0 { 1 }
+    it("should save metadata")(withCache { implicit ctx =>
+      val a = cache.cache0 { 1 }
       val (b, c) = a.map { a => (a, a + 1) }.decompose
-      val d = cp.cache((b, c)) { case (b, c) => b + c }
+      val d = cache.cache((b, c)) { case (b, c) => b + c }
       d.foreach { d => assert(d == 3) }
 
-      val nfs = fs.namespace(d.id.pathString)
+      val nfs = ctx.fs.namespace(d.id.pathString)
       assert(nfs.exists("cache.json"))
       val meta = MetaData.fromJson(nfs.readString("cache.json"))
       assert(meta.id == d.id)
     })
-    it("should distinct values via its tree")(withFS { fs =>
-      val cp = new Checkpoint(fs)
-
-      val x = cp.source { 1 }
+    it("should distinct values via its tree")(withCache { implicit ctx =>
+      val x = cache.source { 1 }
       val x1 = x.map(_.toString)
       val x2 = x.map(_.toString)
       assert(x1.id == x2.id)
 
-      val y = cp.source((1, 2))
+      val y = cache.source((1, 2))
       val y1 = y.map { case (a, b) => a + b }
       val y2 = y.map { case (a, b) => a + b }
       assert(y1.id == y2.id)
     })
-    it("should record its dependency")(withFS { fs =>
-      val cp = new Checkpoint(fs)
-      val x = cp.source { 1 }
-      val y = cp.join(x) { x => x + 1 }
+    it("should record its dependency")(withCache { implicit ctx =>
+      val x = cache.source { 1 }
+      val y = cache.join(x) { x => x + 1 }
       assert(y.id.deps == Seq(x.id))
     })
-    it("should accept anon cache")(withFS { fs =>
-      val cp = new Checkpoint(fs)
+    it("should accept anon cache")(withCache { implicit ctx =>
       def foo(a: Dep[Int]) = {
         println(a.id)
         assert(a.id.name == "__anon__")
       }
-      foo(cp.cache0 { 1 })
+      foo(cache.cache0 { 1 })
       class A {
-        foo(cp.cache0 { 1 })
+        foo(cache.cache0 { 1 })
       }
       new A
     })
   }
   describe("Decomposable") {
-    it("should decompose dep value")(withFS { fs =>
-      val cp = new Checkpoint(fs)
+    it("should decompose dep value")(withCache { implicit ctx =>
       var count = 0
       def exec(): Dep[(Int, Int, Int)] = {
-        val (a, b) = cp.source { (1, 2) }.decompose
+        val (a, b) = cache.source { (1, 2) }.decompose
 
-        cp.unwrap((a, b)) {
+        cache.unwrap((a, b)) {
           case (a, b) =>
             assert(a == 1)
             assert(b == 2)
         }
 
-        cp.cache((a, b)) {
+        cache.cache((a, b)) {
           case (a, b) =>
             count += 1
             (a + 1, b + 1, a + b)
@@ -114,15 +113,14 @@ class CacheTest extends org.scalatest.FunSpec {
       }
 
       assert(count == 0)
-      cp.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
+      cache.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
       assert(count == 1)
-      cp.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
+      cache.unwrap(exec()) { x => assert(x == ((2, 3, 3))) }
       assert(count == 1)
     })
 
     def decompose[A, B](v: A)(implicit ev: Decomposable[A, B]): (DepID, B) = {
-      val cp = new Checkpoint(null)
-      val d = cp.source(v)
+      val d = cache.source(v)
       (d.id, d.decompose)
     }
     it("should decompose tuple2")({
@@ -163,9 +161,8 @@ class CacheTest extends org.scalatest.FunSpec {
     }
   }
   describe("Dep") {
-    it("should provide map and foreach")(withFS { fs =>
-      val cp = new Checkpoint(fs)
-      val x = cp.source { 10 }
+    it("should provide map and foreach")(withCache { implicit ctx =>
+      val x = cache.source { 10 }
       val y = x.map(_ + 11)
       y.foreach { y =>
         assert(y == 21)

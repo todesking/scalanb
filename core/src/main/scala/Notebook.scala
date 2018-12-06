@@ -32,7 +32,7 @@ object Notebook {
       Seq(q"scalanb__context: _root_.com.todesking.scalanb.NBContext")
     }
 
-    def prelude: Seq[Tree] = Seq()
+    def prelude: Seq[Tree] = Seq(q"implicit val scalanb__cacheContext = implicitly[_root_.com.todesking.scalanb.NBContext].cacheContext")
 
     def apply(annottees: Expr[Any]*): Expr[Any] = {
       annottees.map(_.tree) match {

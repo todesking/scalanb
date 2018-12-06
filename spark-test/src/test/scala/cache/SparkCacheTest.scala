@@ -8,8 +8,8 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.{ functions => fn }
 
 import com.todesking.scalanb.io.LocalFileSystem
-import com.todesking.scalanb.cache.Checkpoint
 import com.todesking.scalanb.cache.Cacheable
+import com.todesking.{ scalanb => nb }
 
 import test.io.FileSystemTestUtil
 
@@ -38,30 +38,32 @@ class SparkCacheTest extends org.scalatest.FunSpec {
     }
   }
 
+  val cache = nb.cache.get(getClass)
+
   it("should cache DataFrame")(withTmpDir { tmp =>
     withSpark { implicit spark =>
       val fs = new LocalFileSystem(tmp.toString)
-      val cp = new Checkpoint(fs)
+      implicit val ctx = new nb.cache.CacheContext(fs)
 
       import spark.implicits._
       import com.todesking.scalanb.spark.AllImplicits._
 
       var count = 0
       def exec() = {
-        val df = cp.source {
+        val df = cache.source {
           spark.createDataset(Seq(1, 2, 3)).toDF("v")
         }
 
-        val df2 = cp.cache(df) { df =>
+        val df2 = cache.cache(df) { df =>
           count += 1
           df.select(('v + 1).as("v"))
         }
 
-        val Array(train, test) = cp.cache(df) { df =>
+        val Array(train, test) = cache.cache(df) { df =>
           df.randomSplit(Array(1.0, 0.0))
         }.decompose
 
-        cp.unwrap((train, test)) {
+        cache.unwrap((train, test)) {
           case (train, test) =>
             assert(train.count() == 3)
             assert(test.count() == 0)
@@ -71,11 +73,11 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       }
 
       assert(count == 0)
-      cp.unwrap(exec()) { df =>
+      cache.unwrap(exec()) { df =>
         assert(df.as[Int].collect().toSeq == Seq(2, 3, 4))
       }
       assert(count == 1)
-      cp.unwrap(exec()) { df =>
+      cache.unwrap(exec()) { df =>
         assert(df.as[Int].collect().toSeq == Seq(2, 3, 4))
       }
       assert(count == 1)
@@ -88,18 +90,17 @@ class SparkCacheTest extends org.scalatest.FunSpec {
       import com.todesking.scalanb.spark.AllImplicits._
 
       val fs = new LocalFileSystem(tmp.toString)
-      val cp = new Checkpoint(fs)
 
       val vec = fn.udf { i: Int => Vectors.dense(Array(i.toDouble)) }
-      val v = cp.source { spark.createDataset(Seq(1, 2, 3)).toDF("value").select('value, vec('value).as("vector")) }
+      val v = cache.source { spark.createDataset(Seq(1, 2, 3)).toDF("value").select('value, vec('value).as("vector")) }
 
       val c = implicitly[Cacheable[DataFrame]]
-      val cv = cp.join(v) { v =>
+      val cv = cache.join(v) { v =>
         c.save(fs, "v2")(v)
         c.load(fs, "v2")
       }
 
-      cp.join((v, cv)) {
+      cache.join((v, cv)) {
         case (v, cv) =>
           assert(v.as[(Int, Vector)].collect().toSeq == cv.as[(Int, Vector)].collect().toSeq)
       }
@@ -110,18 +111,17 @@ class SparkCacheTest extends org.scalatest.FunSpec {
     withTmpDir { tmp =>
       import com.todesking.scalanb.spark.AllImplicits._
       val fs = new LocalFileSystem(tmp.toString)
-      val cp = new Checkpoint(fs)
 
       import org.apache.spark.ml
       val c = implicitly[Cacheable[ml.classification.LogisticRegression]]
-      val x = cp.source { new ml.classification.LogisticRegression().setRegParam(3.0) }
+      val x = cache.source { new ml.classification.LogisticRegression().setRegParam(3.0) }
 
       val cx =
-        cp.join(x) { x =>
+        cache.join(x) { x =>
           c.save(fs, "cx")(x)
           c.load(fs, "cx")
         }
-      cp.join((x, cx)) {
+      cache.join((x, cx)) {
         case (c, cx) =>
           assert(c.getRegParam == cx.getRegParam)
       }

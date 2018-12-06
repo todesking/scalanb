@@ -4,21 +4,19 @@ import com.todesking.{ scalanb => nb }
 class Module(param1: Int) {
   val moduleValue = param1 * 100
   val m2 = Module2.load(moduleValue)
-  nb.checkpoint.fs.basePath
 }
 
 @nb.Module
 class Module2(param: Int) {
   val x = param + 1
-  nb.checkpoint.fs.basePath
 }
 
 @nb.Notebook
 class Example1 {
 
   nb.setShowTimeMillis(100)
-  val cp = nb.checkpoint
-  cp.fs.basePath
+  val cache = nb.cache.get(getClass)
+  implicitly[nb.cache.CacheContext].fs.basePath
 
   nb.markdown("# Scalanb Example")
 
@@ -71,7 +69,7 @@ class Example1 {
 
   Example1.foo()
 
-  val cachedValue = cp.cache((a, b)) {
+  val cachedValue = cache.cache((a, b)) {
     case (a, b) =>
       println("Calculating...")
       a + b

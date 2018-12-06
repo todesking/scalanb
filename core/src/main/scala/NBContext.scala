@@ -1,14 +1,12 @@
 package com.todesking.scalanb
 
-import com.todesking.scalanb.cache.Checkpoint
-
 case class NBState(
   val config: NBConfig,
   val name: String,
   val className: String,
   val namePath: Seq[String])
 
-class NBContext(_name: String, _className: String, listeners: Seq[EventListener], newCP: NBContext => Checkpoint) {
+class NBContext(_name: String, _className: String, listeners: Seq[EventListener], newCacheContext: NBContext => cache.CacheContext) {
   private[this] var _state: NBState = NBState(
     NBConfig.default,
     _name,
@@ -16,7 +14,7 @@ class NBContext(_name: String, _className: String, listeners: Seq[EventListener]
     Seq())
   def state = _state
 
-  lazy val checkpoint = newCP(this)
+  lazy val cacheContext = newCacheContext(this)
 
   private[this] var _silent = false
 

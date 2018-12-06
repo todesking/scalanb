@@ -106,20 +106,20 @@ $ sbt 'runMain MyNotebook --log'
 import com.todesking.{scalanb => nb}
 @nb.Notebook
 class BigData {
-  val cp = nb.checkpoint
+  val cache = nb.cache.get(getClass)
 
-  val rawLog = cp.nocache { loadData("data/raw.csv") }
-  val count = cp.cache(rawLog) { rawLog => rawLog.count() }
-  cp.unwrap(count) { count =>
+  val rawLog = cache.nocache { loadData("data/raw.csv") }
+  val count = cache.cache(rawLog) { rawLog => rawLog.count() }
+  cache.unwrap(count) { count =>
     println(s"count = $count")
   }
 
   val userId = 10
-  val theUsersLogs = cp.cache((rawLog, userId)) { case (rawLog, userId) =>
+  val theUsersLogs = cache.cache((rawLog, userId)) { case (rawLog, userId) =>
     rawLog.where('user_id === userId)
   }
 
-  cp.unwrap(theUsersLogs) { theUsersLogs =>
+  cache.unwrap(theUsersLogs) { theUsersLogs =>
     theUsersLogs.count()
     theUsersLogs.show()
   }
@@ -135,17 +135,17 @@ ID calculated from
 
 ```scala
 // ID: rawLog-{ loadData("data/raw.csv") }
-val rawLog = cp.nocache { loadData("data/raw.csv") }
+val rawLog = cache.nocache { loadData("data/raw.csv") }
 
 // ID: count-{ rawLog => rawLog.count() }(rawLog-{ loadData("data/raw.csv") })
-val count = cp.cache(rawLog) { rawLog => rawLog.count() }
+val count = cache.cache(rawLog) { rawLog => rawLog.count() }
 
 // Primitive values could be dependent value.
 // ID: lit:10
 val userId = 10
 
 // ID: theUsersLogs-{ case (rawLog, userId) => rawLog.where('user_id === userId) }((rawLog-{ loadData("data/raw.csv") }, lit:10))
-val theUsersLogs = cp.cache((rawLog, userId)) { case (rawLog, userId) =>
+val theUsersLogs = cache.cache((rawLog, userId)) { case (rawLog, userId) =>
   rawLog.where('user_id === userId)
 }
 ```

@@ -3,7 +3,6 @@ package com.todesking.scalanb
 import com.todesking.scalanb.io.TappedPrintStream
 import com.todesking.scalanb.io.IO
 import com.todesking.scalanb.io.FileSystem
-import com.todesking.scalanb.cache.Checkpoint
 import com.todesking.scalanb.cache.DepID
 import com.todesking.scalanb.cache.MetaData
 
@@ -114,9 +113,9 @@ object Runner {
       Seq(ipynbListener, new EventListener.Log(w))
     }
 
-    val newCP = { ctx: NBContext => new Checkpoint(parsedArgs.fsForCache, new CacheLogger(ctx)) }
+    val newCacheContext = { ctx: NBContext => new cache.CacheContext(parsedArgs.fsForCache, new CacheLogger(ctx)) }
 
-    val ctx = new NBContext(notebookName, notebookClassName, listeners, newCP)
+    val ctx = new NBContext(notebookName, notebookClassName, listeners, newCacheContext)
 
     def writeIpynb() = {
       val duration = System.currentTimeMillis() - start
@@ -189,7 +188,7 @@ object Runner {
     }
 
     override def hit(fs: FileSystem, id: DepID, meta: MetaData) = {
-      display(Value.text(s"Cache found: ${id.shortString}, created=${localDateTimeString(meta.createdAt)}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}"))
+      display(Value.text(s"Cache found: ${id.shortString}, created = ${localDateTimeString(meta.createdAt)}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}"))
     }
 
     override def loaded(fs: FileSystem, id: DepID, meta: MetaData, loadDuration: Long) = {

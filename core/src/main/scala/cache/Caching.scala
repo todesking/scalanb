@@ -8,13 +8,17 @@ import scala.reflect.runtime.universe.TypeTag
 
 import scala.language.experimental.macros
 
-class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEventListener.Null) {
-  def source[R](f: R): Dep[R] = macro Checkpoint.Impl.nocache0[R]
-  def join[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.nocache1[A, R]
+class CacheContext(val fs: FileSystem, val eventListener: CacheEventListener = CacheEventListener.Null)
+
+class Caching(val className: String) {
+  def this(klass: Class[_]) = this(klass.getName)
+
+  def source[R](f: R): Dep[R] = macro Caching.Impl.nocache0[R]
+  def join[A, R](args: DepArg[A])(f: A => R): Dep[R] = macro Caching.Impl.nocache1[A, R]
   def unwrap[A](args: DepArg[A])(f: A => Unit): Unit = f(args.value)
 
-  def cache0[R: Cacheable: TypeTag](f: R): Dep[R] = macro Checkpoint.Impl.cache0[R]
-  def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R): Dep[R] = macro Checkpoint.Impl.cache1[A, R]
+  def cache0[R: Cacheable: TypeTag](f: R)(implicit ctx: CacheContext): Dep[R] = macro Caching.Impl.cache0[R]
+  def cache[A, R: Cacheable: TypeTag](args: DepArg[A])(f: A => R)(implicit ctx: CacheContext): Dep[R] = macro Caching.Impl.cache1[A, R]
 
   private[this] def time[A](a: => A): (Long, A) = {
     val start = System.currentTimeMillis()
@@ -22,7 +26,8 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
     val duration = System.currentTimeMillis() - start
     (duration, value)
   }
-  def cacheImpl[A](c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
+  def cacheImpl[A](ctx: CacheContext, c: Cacheable[A], tt: TypeTag[A], id: DepID, value: => A): Dep[A] = {
+    import ctx.{ fs, eventListener }
     val nfs = fs.namespace(id.pathString)
     if (fs.exists(id.pathString)) {
       val meta = MetaData.fromJson(nfs.readString("cache.json"))
@@ -39,7 +44,6 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
       Dep.eagerUNSAFE(id, v)
     }
   }
-
   private[this] def save[A](c: Cacheable[A], tt: TypeTag[A], fs: FileSystem, id: DepID, value: => A): (MetaData, A) = {
     import java.time.Instant
     val start = Instant.now()
@@ -49,25 +53,9 @@ class Checkpoint(val fs: FileSystem, eventListener: CacheEventListener = CacheEv
     fs.writeString("cache.json", meta.toJson)
     (meta, v)
   }
-
-  def list(fs: FileSystem): Seq[MetaData] = {
-    fs.list().flatMap { ns =>
-      fs.list(ns).flatMap { name =>
-        fs.list(s"$ns/$name").flatMap { ver =>
-          val path = s"$ns/$name/$ver/cache.json"
-          if (fs.exists(path)) {
-            Some(MetaData.fromJson(fs.readString(path)))
-          } else {
-            None
-          }
-        }
-      }
-    }
-  }
-
 }
 
-object Checkpoint {
+object Caching {
   class Impl(val c: Context) {
     import c.Expr
     import c.WeakTypeTag
@@ -92,19 +80,20 @@ object Checkpoint {
       Expr[Dep[R]](q"_root_.com.todesking.scalanb.cache.Dep.lazyUNSAFE($id)($value)")
     }
 
-    def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {
+    def cache0[R: WeakTypeTag](f: Expr[R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]], ctx: Expr[CacheContext]): Expr[Dep[R]] = {
       def src = source(f.tree)
       val id = q"_root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $emptySeq)"
-      Expr[Dep[R]](q"${c.prefix}.cacheImpl($ev, $tt, $id, $f)")
+      Expr[Dep[R]](q"${c.prefix}.cacheImpl($ctx, $ev, $tt, $id, $f)")
     }
 
-    def cache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[A => R])(ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]]): Expr[Dep[R]] = {
+    def cache1[A: WeakTypeTag, R: WeakTypeTag](args: Expr[DepArg[A]])(f: Expr[A => R])(
+      ev: Expr[Cacheable[R]], tt: Expr[TypeTag[R]], ctx: Expr[CacheContext]): Expr[Dep[R]] = {
       def src = source(f.tree)
       val id = q""
       Expr[Dep[R]](q"""
         val args = $args
         val id = _root_.com.todesking.scalanb.cache.DepID.root($getClassName, $valName, $src, $args.ids)
-        ${c.prefix}.cacheImpl($ev, $tt, id, $f(args.value))
+        ${c.prefix}.cacheImpl($ctx, $ev, $tt, id, $f(args.value))
       """)
     }
 
