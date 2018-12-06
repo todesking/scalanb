@@ -29,7 +29,7 @@ object Dependable {
       case Some(a) =>
         val d = implicitly[Dependable[A, B]].apply(a)
         val id = DepID.forValue(s"option.Some(${d.id.name})", s"Some(${d.id.name})", Seq(d.id))
-        Dep.eagerUNSAFE(id, Some(d.unwrapUNSAFE))
+        Dep.lazyUNSAFE(id)(Some(d.unwrapUNSAFE))
       case None =>
         Dep.eagerUNSAFE(DepID.forValue("option.None", "None", Seq()), None)
     }
@@ -40,7 +40,7 @@ object Dependable {
       val ds = xs.map { x => implicitly[Dependable[A, B]].apply(x) }
       val name = ds.map(_.id.name).mkString(",")
       val id = DepID.forValue(s"Seq($name)", s"Seq($name)", ds.map(_.id))
-      Dep.eagerUNSAFE(id, ds.map(_.unwrapUNSAFE))
+      Dep.lazyUNSAFE(id)(ds.map(_.unwrapUNSAFE))
     }
   }
 }
