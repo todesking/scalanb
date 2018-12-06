@@ -46,7 +46,7 @@ object MacroUtil {
     def enclosingOwnerName: String = {
       val owner = c.internal.enclosingOwner
       val name = owner.name.decodedName.toString
-      if (owner.isType || owner.isModule || name.startsWith("$anon")) "__anon__"
+      if (owner.isType || owner.isModule || name.startsWith("$anon") || name.startsWith("<local ")) "__anon__"
       else name.replaceAll("""\s+$""", "")
     }
 

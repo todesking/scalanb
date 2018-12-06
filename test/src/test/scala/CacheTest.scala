@@ -87,6 +87,10 @@ class CacheTest extends org.scalatest.FunSpec {
         assert(a.id.name == "__anon__")
       }
       foo(cp.cache0 { 1 })
+      class A {
+        foo(cp.cache0 { 1 })
+      }
+      new A
     })
   }
   describe("Decomposable") {
