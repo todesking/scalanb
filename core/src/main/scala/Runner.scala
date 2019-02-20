@@ -140,8 +140,6 @@ object Runner {
   }
 
   class CacheLogger(ctx: NBContext) extends cache.CacheEventListener {
-    import com.todesking.scalanb.format.Html.h
-
     private[this] def time(millis: Long): String =
       format.Time.fromMillis(millis)
 
@@ -151,43 +149,6 @@ object Runner {
       val format = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
       format.format(ldt)
     }
-    private[this] def showMeta(meta: MetaData): String = s"""
-    |<details>
-    |<summary>${h(meta.id.shortString)}</summary>
-    |<dl>
-    |<dt>ID</dt><dd>${showId(meta.id)}</dd>
-    |<dt>Created at<dt><dd>${h(localDateTimeString(meta.createdAt))}</dd>
-    |<dt>Calc duration</dt><dd>${h(time(meta.calcDuration))}</dd>
-    |<dt>Save duration</dt><dd>${h(time(meta.saveDuration))}</dd>
-    |</dl>
-    |</details>""".stripMargin.drop(1)
-    private[this] def showId(id: DepID): String = {
-      val code = id match {
-        case DepID.Root(ns, name, src, deps) => src
-        case DepID.Map(parent, src) => src
-        case _ => ""
-      }
-      val codeHtml =
-        if (code == "") ""
-        else
-          s"""
-          |<dt>Code</dt>
-          |<dd><div class="highlight hl-scala">
-          |  <pre>${h(code)}</pre>
-          |</div></dd>""".stripMargin.drop(1)
-      s"""
-      |<details>
-      |<summary>${h(id.shortString)}</summary>
-      |<dl>
-      |<dt>Namespace</dt><dd>${h(id.namespace)}</dd>
-      |<dt>Name</dt><dd>${h(id.name)}</dd>
-      |${codeHtml}
-      |<dt>Deps</dt>
-      |<dd><ul>${id.deps.map(showId).map(s => s"<li>${s}</li>").mkString("\n")}</ul></dd>
-      |</dl>
-      |</details>""".stripMargin.drop(1)
-    }
-
     override def hit(fs: FileSystem, id: DepID, meta: MetaData) = {
       display(Value.text(s"Cache found: ${id.shortString}, created=${localDateTimeString(meta.createdAt)}, calc = ${time(meta.calcDuration)}, save = ${time(meta.saveDuration)}"))
     }
@@ -197,9 +158,7 @@ object Runner {
     }
 
     override def miss(fs: FileSystem, id: DepID) = {
-      display(Value.text(s"Uncached: ${id.shortString}") ++ Value.html(s"""
-        |Uncached: ${h(id.shortString)}
-        |${showId(id)}""".stripMargin.drop(1)))
+      display(Value.text(s"Uncached: ${id.shortString}"))
     }
 
     override def saved(fs: FileSystem, id: DepID, meta: MetaData) = {
