@@ -15,6 +15,12 @@ object Dependable {
   implicit val ofInt: Dependable[Int, Int] =
     apply { i => DepID.forValue(s"int.$i", s"$i", Seq()) }
 
+  implicit val ofLong: Dependable[Long, Long] =
+    apply { i => DepID.forValue(s"long.$i", s"$i", Seq()) }
+
+  implicit val ofString: Dependable[String, String] =
+    apply { s => DepID.forValue("string", s, Seq()) }
+
   implicit def ofSeqInt: Dependable[Seq[Int], Seq[Int]] =
     apply { a =>
       DepID.forValue("Seq[Int]", s"Seq(${a.mkString(",")})", Seq())
